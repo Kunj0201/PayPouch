@@ -75,6 +75,10 @@
                 <h2 class="text-2xl md:text-3xl font-bold mb-2 text-center">Create Your Account</h2>
                 <p class="text-gray-600 mb-8 text-center">One bill, once a month. Simple.</p>
                 <form id="signUpForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="signUpFirstName" placeholder="First Name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
+                        <input type="text" id="signUpLastName" placeholder="Last Name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
+                    </div>
                     <input type="email" id="signUpEmail" placeholder="Enter your email address" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
                     <input type="password" id="signUpPassword" placeholder="Create a password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
                     <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
@@ -109,7 +113,7 @@
             <div>
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
                     <div>
-                        <h2 class="text-3xl font-bold">Your Dashboard</h2>
+                        <h2 id="dashboardWelcome" class="text-3xl font-bold">Your Dashboard</h2>
                         <p id="dashboardUserEmail" class="text-gray-500 mt-1">Manage all your subscriptions in one place.</p>
                     </div>
                      <button id="addNewSubscriptionBtn" class="mt-4 md:mt-0 bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-indigo-700 transition-all shadow-md flex items-center">
@@ -120,13 +124,23 @@
                     </button>
                 </div>
 
-                <!-- Payment Method -->
-                <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-                     <h3 class="text-xl font-semibold mb-4">Payment Method</h3>
-                    <div id="paymentMethodContainer">
-                        <!-- This will be populated by JS -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <!-- Payment Method Card -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                         <h3 class="text-xl font-semibold mb-4">Payment Method</h3>
+                        <div id="paymentMethodContainer">
+                            <!-- This will be populated by JS -->
+                        </div>
+                    </div>
+                    <!-- Monthly Total Card -->
+                     <div class="bg-white p-6 rounded-xl shadow-lg">
+                         <h3 class="text-xl font-semibold mb-4">Your Monthly Total</h3>
+                        <div id="monthlyTotalContainer" class="flex items-center">
+                             <!-- This will be populated by JS -->
+                        </div>
                     </div>
                 </div>
+
 
                 <!-- Subscriptions List -->
                 <div class="bg-white p-6 rounded-xl shadow-lg">
@@ -196,7 +210,7 @@
             const API_BASE_URL = 'http://ec2-44-201-116-80.compute-1.amazonaws.com:3001';
             
             // --- IMPORTANT: Replace with your own Stripe Publishable Key ---
-            const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RcqgJPtA8gOUOMLX57vK3ejGsjVuxYCDrzSvOLp55rQuGgaG7REDSnIOFYqSpIXWX88F0sW0KomlbQaTLySy3Oy00769U1Mzr'; // e.g., pk_test_51...
+            const STRIPE_PUBLISHABLE_KEY = 'pk_test_...'; // e.g., pk_test_51...
             if (STRIPE_PUBLISHABLE_KEY === 'pk_test_...') {
                 console.warn("Stripe Publishable Key not set. Payment form will not work.");
             }
@@ -224,12 +238,14 @@
             const cancelAddSubscriptionBtn = document.getElementById('cancelAddSubscriptionBtn');
             const addSubscriptionForm = document.getElementById('addSubscriptionForm');
             const subscriptionsList = document.getElementById('subscriptionsList');
+            const dashboardWelcome = document.getElementById('dashboardWelcome');
             const dashboardUserEmail = document.getElementById('dashboardUserEmail');
             
             const paymentModal = document.getElementById('paymentModal');
             const paymentForm = document.getElementById('paymentForm');
             const cancelPaymentBtn = document.getElementById('cancelPaymentBtn');
             const paymentMethodContainer = document.getElementById('paymentMethodContainer');
+            const monthlyTotalContainer = document.getElementById('monthlyTotalContainer');
 
 
             function showSection(sectionName) {
@@ -257,11 +273,8 @@
                     const subs = await response.json();
                     renderSubscriptions(subs);
                 } catch (error) {
-                    console.error("An error occurred:", error.message); // Displays the error message
-                    console.error("Error details:", error); // Displays the full error object
-                    // console.error('Error fetching subscriptions:', error);
-                    // const errorMessage = `<div class="text-center text-red-600 p-4 border border-red-200 bg-red-50 rounded-lg"><p class="font-bold">Could not connect to the local server.</p><p class="text-sm mt-2">Please make sure your Node.js local server ('server.js') is running on <strong>http://localhost:3000</strong> and try again.</p><p class="text-xs mt-2 text-gray-500">Error: ${error.message}</p></div>`;
-                    // const errorMessage = `<div class="text-center text-red-600 p-4 border border-red-200 bg-red-50 rounded-lg"><p class="font-bold">Could not connect to the local server.</p><p class="text-sm mt-2">Please make sure your Node.js local server ('server.js') is running on <strong>http://localhost:3000</strong> and try again.</p><p class="text-xs mt-2 text-gray-500">Error: ${error.message}</p></div>`;
+                    console.error('Error fetching subscriptions:', error);
+                    const errorMessage = `<div class="text-center text-red-600 p-4 border border-red-200 bg-red-50 rounded-lg"><p class="font-bold">Could not connect to the local server.</p><p class="text-sm mt-2">Please make sure your Node.js local server ('server.js') is running on <strong>http://localhost:3000</strong> and try again.</p><p class="text-xs mt-2 text-gray-500">Error: ${error.message}</p></div>`;
                     subscriptionsList.innerHTML = errorMessage;
                 }
             }
@@ -288,7 +301,8 @@
                 const savedUser = localStorage.getItem('paypouch_currentUser');
                 if (savedUser) {
                     currentUser = JSON.parse(savedUser);
-                    dashboardUserEmail.textContent = `Welcome back, ${currentUser.email}!`;
+                    dashboardWelcome.textContent = `Welcome, ${currentUser.firstName}!`;
+                    dashboardUserEmail.textContent = currentUser.email;
                     renderPaymentMethod();
                     showSection('dashboard');
                     fetchSubscriptions();
@@ -297,10 +311,11 @@
                 }
             }
             
-            function loginUser(email, id) {
-                currentUser = { email, id };
+            function loginUser(user) {
+                currentUser = user;
                 localStorage.setItem('paypouch_currentUser', JSON.stringify(currentUser));
-                dashboardUserEmail.textContent = `Welcome, ${currentUser.email}!`;
+                dashboardWelcome.textContent = `Welcome, ${currentUser.firstName}!`;
+                dashboardUserEmail.textContent = currentUser.email;
                 renderPaymentMethod();
                 showSection('dashboard');
                 fetchSubscriptions();
@@ -404,16 +419,18 @@
 
             signUpForm.addEventListener('submit', (e) => {
                 e.preventDefault();
+                const firstName = document.getElementById('signUpFirstName').value;
+                const lastName = document.getElementById('signUpLastName').value;
                 const email = document.getElementById('signUpEmail').value;
                 const password = document.getElementById('signUpPassword').value;
-                if (!email || !password) return alert('Please fill out all fields.');
+                if (!firstName || !lastName || !email || !password) return alert('Please fill out all fields.');
                 if (usersDB[email]) return alert('An account with this email already exists. Please log in.');
                 
                 const userId = `user_${Math.random().toString(36).substr(2, 9)}`;
-                usersDB[email] = { password, id: userId };
+                usersDB[email] = { password, id: userId, firstName, lastName };
                 localStorage.setItem('paypouch_usersDB', JSON.stringify(usersDB));
                 
-                loginUser(email, userId);
+                loginUser({email, id: userId, firstName, lastName});
             });
 
             loginForm.addEventListener('submit', (e) => {
@@ -422,7 +439,7 @@
                 const password = document.getElementById('loginPassword').value;
                 const user = usersDB[email];
                 if (user && user.password === password) {
-                    loginUser(email, user.id);
+                    loginUser({email, id: user.id, firstName: user.firstName, lastName: user.lastName});
                 } else {
                     alert('Invalid email or password.');
                 }
@@ -489,33 +506,45 @@
 
             // --- Rendering Function ---
             function renderSubscriptions(subs) {
+                let totalCost = 0;
                 if (!subs || subs.length === 0) {
                      subscriptionsList.innerHTML = `<div class="text-center py-8 text-gray-500"><p>You haven't added any subscriptions yet.</p><p class="text-sm">Click "Add New Subscription" to get started!</p></div>`;
-                    return;
+                } else {
+                    subscriptionsList.innerHTML = ''; // Clear current list
+                    subs.forEach(sub => {
+                        totalCost += parseFloat(sub.cost);
+                        const subElement = document.createElement('div');
+                        subElement.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg border';
+                        const dummyCard = `**** **** **** ${sub.subscriptionId.slice(-4)}`;
+                        subElement.innerHTML = `
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-4">
+                                    <span class="font-bold text-indigo-600">${sub.subscriptionName.charAt(0).toUpperCase()}</span>
+                                </div>
+                                <div>
+                                    <p class="font-semibold">${sub.subscriptionName}</p>
+                                    <p class="text-sm text-gray-500">Added: ${new Date(sub.createdAt).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                               <p class="font-semibold text-lg">$${parseFloat(sub.cost).toFixed(2)}</p>
+                               <p class="text-sm text-gray-500">Card: ${dummyCard}</p>
+                            </div>
+                        `;
+                        subscriptionsList.appendChild(subElement);
+                    });
                 }
                 
-                subscriptionsList.innerHTML = '';
-                subs.forEach(sub => {
-                    const subElement = document.createElement('div');
-                    subElement.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg border';
-                    const dummyCard = `**** **** **** ${sub.subscriptionId.slice(-4)}`;
-                    subElement.innerHTML = `
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-4">
-                                <span class="font-bold text-indigo-600">${sub.subscriptionName.charAt(0).toUpperCase()}</span>
-                            </div>
-                            <div>
-                                <p class="font-semibold">${sub.subscriptionName}</p>
-                                <p class="text-sm text-gray-500">Added: ${new Date(sub.createdAt).toLocaleDateString()}</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                           <p class="font-semibold text-lg">$${parseFloat(sub.cost).toFixed(2)}</p>
-                           <p class="text-sm text-gray-500">Card: ${dummyCard}</p>
-                        </div>
-                    `;
-                    subscriptionsList.appendChild(subElement);
-                });
+                // Render the total cost
+                monthlyTotalContainer.innerHTML = `
+                    <svg class="h-8 w-8 text-indigo-600 mr-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <div>
+                        <p class="font-bold text-3xl text-gray-800">$${totalCost.toFixed(2)}</p>
+                        <p class="text-sm text-gray-500">This is your estimated bill for next month.</p>
+                    </div>
+                `;
             }
             
             // --- Initial State Check ---
