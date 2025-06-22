@@ -23,3 +23,285 @@ What this command does:
 --provisioned-throughput: Allocates initial read and write capacity for the table. The values 5,5 are well within the AWS Free Tier.
 
 
+--> GitHub Toke: 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
+
+
+-----------------------------------------------------------------------------------------------------------------
+
+AWS Deployment - Step 2: Deploy Backend to AWS Fargate
+Objective: To take your local Node.js Express server, package it into a Docker container, and run it on AWS Fargate, a serverless compute engine. This makes your backend publicly accessible and highly scalable.
+
+Part A: Modify the Server Code for Production
+First, we need to make a small but critical change to your server.js file. We must remove the local configuration for the DynamoDB client so that it automatically and securely connects to the live AWS environment when deployed.
+
+Action:
+
+Open your server.js file.
+
+Find the dynamoDBClient configuration section.
+
+Delete the configuration object entirely.
+
+Modify this code:
+
+// --- AWS SDK Configuration for Local DynamoDB ---
+// This configuration tells the AWS SDK to connect to our local database instance
+const dynamoDBClient = new DynamoDBClient({
+    region: 'localhost', // Dummy region for local development
+    endpoint: 'http://localhost:8000', // The default endpoint for DynamoDB Local
+    credentials: {
+        accessKeyId: 'dummyAccessKeyId', // Dummy credentials
+        secretAccessKey: 'dummySecretAccessKey',
+    },
+});
+const docClient = DynamoDBDocumentClient.from(dynamoDBClient);
+
+To become this:
+
+// --- AWS SDK Configuration ---
+// When running on AWS (like in Fargate), the SDK will automatically
+// find the necessary credentials and region from its environment.
+const dynamoDBClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentatorClient.from(dynamoDBClient);
+
+Save the server.js file.
+
+Part B: Containerize the Application with Docker
+Next, we'll create a Dockerfile. This is a recipe that tells Docker how to build a self-contained package of your application.
+
+Action:
+
+Make sure you have Docker Desktop installed and running on your machine.
+
+In the root of your backend project folder (the same folder as server.js), create a new file named Dockerfile (no extension).
+
+Copy and paste the following content into that file:
+
+# Use an official Node.js runtime as a parent image
+# Using the 'alpine' version for a smaller, more secure image
+FROM node:18-alpine
+
+# Set the working directory in the container
+WORKDIR /usr/src/app
+
+# Copy package.json and package-lock.json to the working directory
+COPY package*.json ./
+
+# Install app dependencies
+RUN npm install
+
+# Copy the rest of your app's source code from your local machine to the container
+COPY . .
+
+# Make port 3000 available to the world outside this container
+EXPOSE 3000
+
+# Define the command to run your app
+CMD [ "node", "server.js" ]
+
+Part C: High-Level Deployment Steps on AWS
+Deploying a containerized application involves several steps within the AWS Console. This is a high-level overview of the manual process. For a real production setup, you would automate this with the AWS CDK or Terraform.
+
+Build and Push the Docker Image to Amazon ECR (Elastic Container Registry):
+
+Navigate to the ECR service in the AWS Console and create a new "private" repository (e.g., paypouch-backend).
+
+Follow the "View push commands" instructions provided by ECR. This will give you the exact terminal commands to build your Docker image locally, tag it, and push it to your new ECR repository.
+
+Create a Fargate Task Definition:
+
+Navigate to the Amazon ECS (Elastic Container Service).
+
+Go to "Task Definitions" and create a new one.
+
+Select "Fargate" as the launch type.
+
+Give it a name (e.g., paypouch-task-def).
+
+In the "Container details" section, specify the name of your container and paste the Image URI from your ECR repository.
+
+Set the "Port mappings" to 3000.
+
+You will also need to create an IAM Task Role that gives your container permission to access DynamoDB.
+
+Create an Application Load Balancer (ALB):
+
+Navigate to the EC2 service, then "Load Balancers".
+
+Create a new Application Load Balancer. Make it "internet-facing" and have it listen on port 80 (HTTP).
+
+Create and Run the Fargate Service:
+
+In ECS, create a new "Cluster".
+
+Within the cluster, create a new "Service".
+
+Configure the service to use your paypouch-task-def.
+
+Specify the number of desired tasks (start with 1).
+
+In the "Networking" section, associate your service with the ALB you created, forwarding traffic from the ALB's port 80 to your container's port 3000.
+
+Verification
+Once the Fargate service is running, you can find the public DNS name of your Application Load Balancer. This is the new public URL for your backend. You can test it with a tool like Postman to ensure it can connect to your live DynamoDB table and perform create/get operations.
+
+This completes the backend deployment. The final step in the process will be to deploy the frontend and point its API calls to this new load balancer URL.
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Alternative Deployment Plan Using EC2
+1. Launch an EC2 Instance:
+Navigate to the EC2 service in the AWS Console.
+Click "Launch instances".
+Choose an Amazon Machine Image (AMI), such as "Amazon Linux 2" (which is common and free-tier eligible).
+Choose an Instance Type, such as t2.micro (also free-tier eligible).
+Create and download a key pair. This .pem file is your SSH key, which is like the password to access your server.
+Create a Security Group (a virtual firewall) that allows inbound traffic on:
+Port 22 (SSH): From your IP address only, so you can connect securely.
+Port 3000 (Custom TCP): From anywhere, so your frontend can talk to the backend.
+Port 80 (HTTP): From anywhere (we'll use this later).
+2. Connect to and Configure Your Server:
+Once the instance is running, use your SSH key to connect to it from your local terminal.
+Once connected, you'll have a command line interface to your server. You need to install the necessary software:
+Bash
+
+sudo yum update -y
+sudo yum install -y nodejs git
+3. Get Your Code onto the Server:
+The easiest way is to push your local project to a GitHub (or other Git provider) repository.
+Then, on your EC2 server, clone the repository:
+Bash
+
+git clone https://github.com/your-username/paypouch-backend.git
+4. Run the Application:
+Navigate into your project directory: cd paypouch-backend.
+Install your application's dependencies: npm install.
+Crucially, you must assign an IAM Role to your EC2 instance that gives it permission to access DynamoDB. This is the secure way to grant permissions without putting secret keys in your code.
+Run your server. To keep it running even after you disconnect, it's best to use a process manager like pm2.
+Bash
+
+sudo npm install pm2 -g
+pm2 start server.js
+At this point, your Node.js application is running on the EC2 server and can be accessed via its public IP address on port 3000. This server would then connect to the live DynamoDB table you already created.
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+AWS Deployment - Step 3: Deploy Frontend & Go Live (EC2 Backend)
+Objective: To deploy your static frontend (HTML, CSS, JavaScript) to Amazon S3, serve it globally via Amazon CloudFront, and connect it to your live EC2 backend.
+
+Part A: Update the Frontend API Endpoint
+First, you must tell your frontend application where to find its new backend running on your EC2 instance.
+
+Find Your Backend URL:
+
+Navigate to the EC2 service in the AWS Console.
+
+Go to "Instances" in the left menu.
+
+Select your running PayPouch instance.
+
+In the details panel, copy the Public IPv4 DNS. It will look something like ec2-xx-xx-xx-xx.us-west-2.compute.amazonaws.com.
+
+Your full backend URL will be this DNS name, followed by the port you are running the server on (:3000).
+
+Modify the Frontend Code:
+
+Open your local paypouch_local_frontend.html file.
+
+Find the line that defines the API_BASE_URL.
+
+Replace the http://localhost:3000 URL with the full public DNS name of your EC2 instance, making sure to include http:// at the beginning and :3000 at the end.
+
+Modify this line:
+
+const API_BASE_URL = 'http://localhost:3000';
+
+To become this (using your copied Public DNS name):
+
+const API_BASE_URL = 'http://ec2-xx-xx-xx-xx.us-west-2.compute.amazonaws.com:3000';
+
+Save the paypouch_local_frontend.html file.
+
+Part B: Deploy Frontend to Amazon S3
+Amazon S3 (Simple Storage Service) will host your website's files.
+
+Create an S3 Bucket:
+
+Navigate to the S3 service in the AWS Console.
+
+Click "Create bucket".
+
+Give it a globally unique name (e.g., paypouch-app-yourname-123).
+
+In the "Block Public Access settings for this bucket" section, uncheck "Block all public access" and acknowledge the warning. This is necessary for the public to view your website.
+
+Click "Create bucket".
+
+Enable Static Website Hosting:
+
+Click on your newly created bucket.
+
+Go to the "Properties" tab.
+
+Scroll down to the bottom and find "Static website hosting". Click "Edit".
+
+Select "Enable".
+
+In the "Index document" field, type paypouch_local_frontend.html.
+
+Click "Save changes".
+
+Set Bucket Policy for Public Access:
+
+Go to the "Permissions" tab of your bucket.
+
+In the "Bucket policy" section, click "Edit".
+
+Paste the following JSON policy. You must replace YOUR_BUCKET_NAME with the actual name of your S3 bucket.
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicReadGetObject",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
+        }
+    ]
+}
+
+Click "Save changes".
+
+Upload Your File:
+
+Go to the "Objects" tab of your bucket.
+
+Click "Upload", then "Add files".
+
+Select your modified paypouch_local_frontend.html file and upload it.
+
+Part C: Go Live with Amazon CloudFront (Optional but Recommended)
+CloudFront is a Content Delivery Network (CDN) that makes your site faster, more secure, and allows for a custom domain with HTTPS.
+
+Navigate to the CloudFront service.
+
+Click "Create a CloudFront distribution".
+
+In the "Origin domain" field, select your S3 bucket from the dropdown list.
+
+Scroll down and click "Create distribution".
+
+Wait for the distribution to finish deploying (this can take several minutes).
+
+Final Verification
+Navigate to your CloudFront distribution and copy its Distribution domain name (e.g., d12345abcdef.cloudfront.net), or find the S3 Website Endpoint URL in your S3 bucket's "Properties" tab.
+
+Open this URL in your web browser.
+
+You should now see your fully functional PayPouch application, live on the internet! It will be communicating directly with your backend server running on the EC2 instance.
+
+(Note on CORS): The app.use(cors()) line in your server.js file is what allows your frontend (hosted on S3/CloudFront) to talk to your backend (hosted on EC2). Without it, web browsers would block the requests for security reasons.

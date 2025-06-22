@@ -193,7 +193,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const API_BASE_URL = 'http://localhost:3000';
+            const API_BASE_URL = 'http://ec2-44-201-116-80.compute-1.amazonaws.com:3001';
             
             // --- IMPORTANT: Replace with your own Stripe Publishable Key ---
             const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RcqgJPtA8gOUOMLX57vK3ejGsjVuxYCDrzSvOLp55rQuGgaG7REDSnIOFYqSpIXWX88F0sW0KomlbQaTLySy3Oy00769U1Mzr'; // e.g., pk_test_51...
@@ -257,8 +257,11 @@
                     const subs = await response.json();
                     renderSubscriptions(subs);
                 } catch (error) {
-                    console.error('Error fetching subscriptions:', error);
-                    const errorMessage = `<div class="text-center text-red-600 p-4 border border-red-200 bg-red-50 rounded-lg"><p class="font-bold">Could not connect to the local server.</p><p class="text-sm mt-2">Please make sure your Node.js local server ('server.js') is running on <strong>http://localhost:3000</strong> and try again.</p><p class="text-xs mt-2 text-gray-500">Error: ${error.message}</p></div>`;
+                    console.error("An error occurred:", error.message); // Displays the error message
+                    console.error("Error details:", error); // Displays the full error object
+                    // console.error('Error fetching subscriptions:', error);
+                    // const errorMessage = `<div class="text-center text-red-600 p-4 border border-red-200 bg-red-50 rounded-lg"><p class="font-bold">Could not connect to the local server.</p><p class="text-sm mt-2">Please make sure your Node.js local server ('server.js') is running on <strong>http://localhost:3000</strong> and try again.</p><p class="text-xs mt-2 text-gray-500">Error: ${error.message}</p></div>`;
+                    // const errorMessage = `<div class="text-center text-red-600 p-4 border border-red-200 bg-red-50 rounded-lg"><p class="font-bold">Could not connect to the local server.</p><p class="text-sm mt-2">Please make sure your Node.js local server ('server.js') is running on <strong>http://localhost:3000</strong> and try again.</p><p class="text-xs mt-2 text-gray-500">Error: ${error.message}</p></div>`;
                     subscriptionsList.innerHTML = errorMessage;
                 }
             }
