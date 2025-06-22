@@ -4,17 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PayPouch - Your Subscription Manager</title>
+    <script src="https://js.stripe.com/v3/"></script> <!-- Stripe.js Library -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
-        .section {
+        .section, .modal-overlay {
             display: none;
         }
         .section.active {
             display: block;
+        }
+        .modal-overlay.active {
+            display: flex;
         }
         /* Simple spinner for loading states */
         .loader {
@@ -29,6 +33,23 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        /* Styles for Stripe Element */
+        .StripeElement {
+            box-sizing: border-box;
+            height: 48px;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background-color: white;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .StripeElement--focus {
+            box-shadow: 0 0 0 2px #4f46e5;
+            border-color: #4f46e5;
+        }
+        .StripeElement--invalid {
+            border-color: #ef4444;
         }
     </style>
 </head>
@@ -102,12 +123,8 @@
                 <!-- Payment Method -->
                 <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
                      <h3 class="text-xl font-semibold mb-4">Payment Method</h3>
-                    <div class="flex items-center bg-gray-100 p-4 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-500 mr-4" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 6a2 2 0 00-2 2v2a2 2 0 002 2h12a2 2 0 002-2v-2a2 2 0 00-2-2H4z" /></svg>
-                        <div>
-                            <p class="font-medium">Bank Account Linked</p>
-                            <p class="text-sm text-gray-500">Your monthly consolidated bill will be paid from this account.</p>
-                        </div>
+                    <div id="paymentMethodContainer">
+                        <!-- This will be populated by JS -->
                     </div>
                 </div>
 
@@ -148,6 +165,28 @@
         </section>
     </main>
 
+    <!-- Payment Method Modal -->
+    <div id="paymentModal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md m-4">
+            <h2 class="text-2xl font-bold mb-4">Link Your Payment Method</h2>
+            <p class="text-gray-600 mb-6">Securely link your card. This will be used for your single monthly bill.</p>
+            <form id="paymentForm">
+                <div class="space-y-4">
+                    <input id="cardholder-name" type="text" placeholder="Cardholder Name" class="w-full px-4 py-3 border border-gray-300 rounded-lg" required>
+                    <!-- This div is a container for the secure Stripe Card Element -->
+                    <div id="card-element" class="StripeElement"></div>
+                    <!-- Used to display form errors. -->
+                    <div id="card-errors" role="alert" class="text-red-600 text-sm mt-2"></div>
+                </div>
+                <div class="mt-8 flex justify-end space-x-3">
+                    <button type="button" id="cancelPaymentBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button id="submitPaymentBtn" type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700">Link Card</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
     <footer class="text-center py-8 text-gray-500 text-sm">
         <p>&copy; 2025 PayPouch. All Rights Reserved.</p>
     </footer>
@@ -156,7 +195,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             const API_BASE_URL = 'http://localhost:3000';
             
-            // --- Simulated User Database & State using localStorage for persistence ---
+            // --- IMPORTANT: Replace with your own Stripe Publishable Key ---
+            const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RcqgJPtA8gOUOMLX57vK3ejGsjVuxYCDrzSvOLp55rQuGgaG7REDSnIOFYqSpIXWX88F0sW0KomlbQaTLySy3Oy00769U1Mzr'; // e.g., pk_test_51...
+            if (STRIPE_PUBLISHABLE_KEY === 'pk_test_...') {
+                console.warn("Stripe Publishable Key not set. Payment form will not work.");
+            }
+            const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+            let cardElement;
+
+            // --- Simulated User Database & State ---
             let usersDB = JSON.parse(localStorage.getItem('paypouch_usersDB')) || {};
             let currentUser = null;
 
@@ -178,12 +225,25 @@
             const addSubscriptionForm = document.getElementById('addSubscriptionForm');
             const subscriptionsList = document.getElementById('subscriptionsList');
             const dashboardUserEmail = document.getElementById('dashboardUserEmail');
+            
+            const paymentModal = document.getElementById('paymentModal');
+            const paymentForm = document.getElementById('paymentForm');
+            const cancelPaymentBtn = document.getElementById('cancelPaymentBtn');
+            const paymentMethodContainer = document.getElementById('paymentMethodContainer');
+
 
             function showSection(sectionName) {
-                Object.values(sections).forEach(section => section.classList.remove('active'));
+                Object.values(sections).forEach(section => {
+                    section.classList.remove('active');
+                    section.style.display = 'none';
+                });
+
                 if (sections[sectionName]) {
+                    sections[sectionName].style.display = 'block';
                     sections[sectionName].classList.add('active');
                 }
+
+                paymentModal.classList.remove('active');
                 logoutBtn.style.display = (sectionName === 'dashboard') ? 'block' : 'none';
             }
 
@@ -226,6 +286,7 @@
                 if (savedUser) {
                     currentUser = JSON.parse(savedUser);
                     dashboardUserEmail.textContent = `Welcome back, ${currentUser.email}!`;
+                    renderPaymentMethod();
                     showSection('dashboard');
                     fetchSubscriptions();
                 } else {
@@ -237,6 +298,7 @@
                 currentUser = { email, id };
                 localStorage.setItem('paypouch_currentUser', JSON.stringify(currentUser));
                 dashboardUserEmail.textContent = `Welcome, ${currentUser.email}!`;
+                renderPaymentMethod();
                 showSection('dashboard');
                 fetchSubscriptions();
             }
@@ -248,6 +310,91 @@
                 showSection('login');
             }
 
+            // --- Payment Method Logic ---
+            function setupStripeElement() {
+                if(cardElement) {
+                    cardElement.destroy();
+                }
+                const elements = stripe.elements();
+                const style = {
+                    base: {
+                        color: "#32325d",
+                        fontFamily: 'Inter, sans-serif',
+                        fontSmoothing: "antialiased",
+                        fontSize: "16px",
+                        "::placeholder": {
+                            color: "#aab7c4"
+                        }
+                    },
+                    invalid: {
+                        color: "#fa755a",
+                        iconColor: "#fa755a"
+                    }
+                };
+                cardElement = elements.create("card", { style: style });
+                cardElement.mount("#card-element");
+
+                cardElement.on('change', function(event) {
+                    const displayError = document.getElementById('card-errors');
+                    if (event.error) {
+                        displayError.textContent = event.error.message;
+                    } else {
+                        displayError.textContent = '';
+                    }
+                });
+            }
+
+            function renderPaymentMethod() {
+                if (!currentUser) return;
+                const paymentLinked = localStorage.getItem(`paymentLinked_${currentUser.id}`);
+                const paymentDetails = JSON.parse(localStorage.getItem(`paymentDetails_${currentUser.id}`));
+
+                if (paymentLinked && paymentDetails) {
+                    paymentMethodContainer.innerHTML = `
+                        <div class="flex items-center justify-between bg-gray-100 p-4 rounded-lg">
+                            <div class="flex items-center">
+                                 <svg class="h-8 w-8 text-green-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                <div>
+                                    <p class="font-medium">${paymentDetails.brand.charAt(0).toUpperCase() + paymentDetails.brand.slice(1)} Card Linked</p>
+                                    <p class="text-sm text-gray-500">Ending in ${paymentDetails.last4} &bull; Expires ${paymentDetails.exp_month}/${paymentDetails.exp_year}</p>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="editPaymentBtn" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300 text-xs">Edit</button>
+                                <button id="removePaymentBtn" class="bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-md hover:bg-red-200 text-xs">Remove</button>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('editPaymentBtn').addEventListener('click', () => {
+                        paymentModal.classList.add('active');
+                        setupStripeElement();
+                    });
+                    document.getElementById('removePaymentBtn').addEventListener('click', () => {
+                        if (confirm('Are you sure you want to remove your payment method?')) {
+                            localStorage.removeItem(`paymentLinked_${currentUser.id}`);
+                            localStorage.removeItem(`paymentDetails_${currentUser.id}`);
+                            renderPaymentMethod();
+                        }
+                    });
+
+                } else {
+                    paymentMethodContainer.innerHTML = `
+                        <div class="flex items-center justify-between bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                            <div>
+                                <p class="font-medium text-yellow-800">Action Required</p>
+                                <p class="text-sm text-yellow-700">Please link a payment method to activate your account.</p>
+                            </div>
+                            <button id="linkPaymentBtn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 text-sm">Link Method</button>
+                        </div>
+                    `;
+                    document.getElementById('linkPaymentBtn').addEventListener('click', () => {
+                        paymentModal.classList.add('active');
+                        setupStripeElement();
+                    });
+                }
+            }
+
+
             // --- Event Listeners ---
             showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showSection('login'); });
             showSignUpLink.addEventListener('click', (e) => { e.preventDefault(); showSection('signUp'); });
@@ -257,11 +404,7 @@
                 const email = document.getElementById('signUpEmail').value;
                 const password = document.getElementById('signUpPassword').value;
                 if (!email || !password) return alert('Please fill out all fields.');
-
-                if (usersDB[email]) {
-                    alert('An account with this email already exists. Please log in.');
-                    return;
-                }
+                if (usersDB[email]) return alert('An account with this email already exists. Please log in.');
                 
                 const userId = `user_${Math.random().toString(36).substr(2, 9)}`;
                 usersDB[email] = { password, id: userId };
@@ -274,24 +417,17 @@
                 e.preventDefault();
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
-
                 const user = usersDB[email];
                 if (user && user.password === password) {
                     loginUser(email, user.id);
-_
                 } else {
                     alert('Invalid email or password.');
                 }
             });
             
             logoutBtn.addEventListener('click', logoutUser);
-
             addNewSubscriptionBtn.addEventListener('click', () => showSection('addSubscription'));
-
-            cancelAddSubscriptionBtn.addEventListener('click', () => {
-                addSubscriptionForm.reset();
-                showSection('dashboard');
-            });
+            cancelAddSubscriptionBtn.addEventListener('click', () => { addSubscriptionForm.reset(); showSection('dashboard'); });
 
             addSubscriptionForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -303,6 +439,48 @@ _
                     showSection('dashboard');
                 } else {
                     alert('Please enter a valid subscription name and cost.');
+                }
+            });
+
+            // Payment Modal Listeners
+            cancelPaymentBtn.addEventListener('click', () => {
+                paymentModal.classList.remove('active');
+                if (cardElement) cardElement.destroy();
+            });
+            
+            paymentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUser) return;
+                const cardholderName = document.getElementById('cardholder-name').value;
+
+                const { paymentMethod, error } = await stripe.createPaymentMethod({
+                    type: 'card',
+                    card: cardElement,
+                    billing_details: {
+                        name: cardholderName,
+                    },
+                });
+
+                if (error) {
+                    document.getElementById('card-errors').textContent = error.message;
+                } else {
+                    console.log('Stripe PaymentMethod successfully created:', paymentMethod);
+                    // --- SIMULATION ---
+                    // In a real app, you would send paymentMethod.id to your backend.
+                    // For now, we'll just save it to localStorage to simulate it being linked.
+                    const paymentDetails = {
+                        brand: paymentMethod.card.brand,
+                        last4: paymentMethod.card.last4,
+                        exp_month: paymentMethod.card.exp_month,
+                        exp_year: paymentMethod.card.exp_year,
+                    }
+                    localStorage.setItem(`paymentLinked_${currentUser.id}`, 'true');
+                    localStorage.setItem(`paymentDetails_${currentUser.id}`, JSON.stringify(paymentDetails));
+
+                    paymentForm.reset();
+                    if(cardElement) cardElement.destroy();
+                    paymentModal.classList.remove('active');
+                    renderPaymentMethod();
                 }
             });
 
