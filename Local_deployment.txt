@@ -28,6 +28,8 @@ Step 2: Set Up a Local Database with DynamoDB Local
 
 What: Run a downloadable version of Amazon's DynamoDB database directly on your machine. It functions identically to the cloud version, making the future transition seamless.
 
+To install aws-sdk/client-dynamodb: npm install express cors @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb uuid
+
 Create a local dynamo db table : aws dynamodb create-table --table-name paypouch-subscriptions --attribute-definitions AttributeName=userId,AttributeType=S AttributeName=subscriptionId,AttributeType=S --key-schema AttributeName=userId,KeyType=HASH AttributeName=subscriptionId,KeyType=RANGE --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 --endpoint-url http://localhost:8000
 
 How:
