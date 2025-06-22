@@ -1,0 +1,25 @@
+Steps of deployment to AWS:
+
+1. Creating a DynamoDB table:
+
+aws dynamodb create-table \
+    --table-name paypouch-subscriptions \
+    --attribute-definitions \
+        AttributeName=userId,AttributeType=S \
+        AttributeName=subscriptionId,AttributeType=S \
+    --key-schema \
+        AttributeName=userId,KeyType=HASH \
+        AttributeName=subscriptionId,KeyType=RANGE \
+    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
+
+What this command does:
+
+--table-name paypouch-subscriptions: Specifies the name of our production table.
+
+--attribute-definitions: Declares the data types for our primary keys (userId and subscriptionId are both strings S).
+
+--key-schema: Defines the table's primary key structure. It uses userId as the Partition Key (for fast lookups) and subscriptionId as the Sort Key (to uniquely identify subscriptions within a user's account).
+
+--provisioned-throughput: Allocates initial read and write capacity for the table. The values 5,5 are well within the AWS Free Tier.
+
+
