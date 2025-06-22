@@ -12,20 +12,13 @@ const { v4: uuidv4 } = require('uuid');
 
 // --- Initialization ---
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const TABLE_NAME = 'paypouch-subscriptions';
 
 // --- AWS SDK Configuration for Local DynamoDB ---
-// This configuration tells the AWS SDK to connect to our local database instance
-// instead of the actual AWS cloud service.
-const dynamoDBClient = new DynamoDBClient({
-    region: 'localhost', // Dummy region for local development
-    endpoint: 'http://localhost:8000', // The default endpoint for DynamoDB Local
-    credentials: {
-        accessKeyId: 'dummyAccessKeyId', // Dummy credentials
-        secretAccessKey: 'dummySecretAccessKey',
-    },
-});
+// When running on an AWS service like EC2 with an attached IAM Role,
+// the SDK automatically finds the credentials and region from the environment.
+const dynamoDBClient = new DynamoDBClient({ region: "us-east-1" })
 const docClient = DynamoDBDocumentClient.from(dynamoDBClient);
 
 
