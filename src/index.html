@@ -4,53 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PayPouch - Your Subscription Manager</title>
-    <script src="https://js.stripe.com/v3/"></script> <!-- Stripe.js Library -->
+    <!-- ** NEW: AWS Cognito Library ** -->
+    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+
+    <script src="https://js.stripe.com/v3/"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .section, .modal-overlay {
-            display: none;
-        }
-        .section.active {
-            display: block;
-        }
-        .modal-overlay.active {
-            display: flex;
-        }
-        /* Simple spinner for loading states */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4f46e5;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Styles for Stripe Element */
-        .StripeElement {
-            box-sizing: border-box;
-            height: 48px;
-            padding: 12px 16px;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            background-color: white;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        }
-        .StripeElement--focus {
-            box-shadow: 0 0 0 2px #4f46e5;
-            border-color: #4f46e5;
-        }
-        .StripeElement--invalid {
-            border-color: #ef4444;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .section, .modal-overlay { display: none; }
+        .section.active { display: block; }
+        .modal-overlay.active { display: flex; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .StripeElement { box-sizing: border-box; height: 48px; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 0.5rem; background-color: white; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .StripeElement--focus { box-shadow: 0 0 0 2px #4f46e5; border-color: #4f46e5; }
+        .StripeElement--invalid { border-color: #ef4444; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased">
@@ -58,12 +27,8 @@
     <!-- Header -->
     <header class="bg-white shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <h1 class="text-3xl font-bold text-gray-900">
-                <span class="text-indigo-600">Pay</span>Pouch
-            </h1>
-            <button id="logoutBtn" class="hidden bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-all text-sm">
-                Logout
-            </button>
+            <h1 class="text-3xl font-bold text-gray-900"><span class="text-indigo-600">Pay</span>Pouch</h1>
+            <button id="logoutBtn" class="hidden bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600">Logout</button>
         </div>
     </header>
 
@@ -71,108 +36,93 @@
 
         <!-- Sign Up Section -->
         <section id="signUpSection" class="section">
-            <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
+             <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
                 <h2 class="text-2xl md:text-3xl font-bold mb-2 text-center">Create Your Account</h2>
-                <p class="text-gray-600 mb-8 text-center">One bill, once a month. Simple.</p>
                 <form id="signUpForm" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" id="signUpFirstName" placeholder="First Name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
-                        <input type="text" id="signUpLastName" placeholder="Last Name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
+                        <input type="text" id="signUpFirstName" placeholder="First Name" class="w-full px-4 py-3 border rounded-lg" required>
+                        <input type="text" id="signUpLastName" placeholder="Last Name" class="w-full px-4 py-3 border rounded-lg" required>
                     </div>
-                    <input type="email" id="signUpEmail" placeholder="Enter your email address" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
-                    <input type="password" id="signUpPassword" placeholder="Create a password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
-                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
-                        Sign Up
-                    </button>
+                    <input type="email" id="signUpEmail" placeholder="Email Address" class="w-full px-4 py-3 border rounded-lg" required>
+                    <input type="password" id="signUpPassword" placeholder="Create a password" class="w-full px-4 py-3 border rounded-lg" required>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg">Sign Up</button>
                 </form>
-                <p class="text-center text-sm text-gray-600 mt-6">
-                    Already have an account? <a href="#" id="showLoginLink" class="font-medium text-indigo-600 hover:text-indigo-500">Log in</a>
+                <p class="text-center text-sm text-gray-600 mt-6">Already have an account? <a href="#" id="showLoginLink" class="font-medium text-indigo-600">Log in</a></p>
+            </div>
+        </section>
+        
+        <!-- ** NEW: Confirmation Section ** -->
+        <section id="confirmSection" class="section">
+            <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
+                <h2 class="text-2xl md:text-3xl font-bold mb-2 text-center">Check your email</h2>
+                <p class="text-gray-600 mb-8 text-center">We've sent a confirmation code to <strong id="confirmEmail"></strong>.</p>
+                <form id="confirmForm" class="space-y-4">
+                    <input type="text" id="confirmationCode" placeholder="Enter confirmation code" class="w-full px-4 py-3 border rounded-lg text-center tracking-widest" required>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg">Confirm Account</button>
+                </form>
+                 <p class="text-center text-sm text-gray-600 mt-4">
+                    Didn't get a code? <a href="#" id="resendCodeLink" class="font-medium text-indigo-600 hover:text-indigo-500">Resend code</a>
                 </p>
             </div>
         </section>
 
         <!-- Login Section -->
         <section id="loginSection" class="section">
-            <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
+             <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
                 <h2 class="text-2xl md:text-3xl font-bold mb-6 text-center">Welcome Back!</h2>
                 <form id="loginForm" class="space-y-4">
-                    <input type="email" id="loginEmail" placeholder="Enter your email address" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
-                    <input type="password" id="loginPassword" placeholder="Enter your password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
-                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
-                        Log In
-                    </button>
+                    <input type="email" id="loginEmail" placeholder="Email Address" class="w-full px-4 py-3 border rounded-lg" required>
+                    <input type="password" id="loginPassword" placeholder="Password" class="w-full px-4 py-3 border rounded-lg" required>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg">Log In</button>
                 </form>
-                <p class="text-center text-sm text-gray-600 mt-6">
-                    Don't have an account? <a href="#" id="showSignUpLink" class="font-medium text-indigo-600 hover:text-indigo-500">Sign up</a>
-                </p>
+                <p class="text-center text-sm text-gray-600 mt-6">Don't have an account? <a href="#" id="showSignUpLink" class="font-medium text-indigo-600">Sign up</a></p>
             </div>
         </section>
 
         <!-- Main Dashboard Section -->
         <section id="dashboardSection" class="section">
-            <div>
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-                    <div>
-                        <h2 id="dashboardWelcome" class="text-3xl font-bold">Your Dashboard</h2>
-                        <p id="dashboardUserEmail" class="text-gray-500 mt-1">Manage all your subscriptions in one place.</p>
-                    </div>
-                     <button id="addNewSubscriptionBtn" class="mt-4 md:mt-0 bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-indigo-700 transition-all shadow-md flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                        </svg>
-                        Add New Subscription
-                    </button>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                <div>
+                    <h2 id="dashboardWelcome" class="text-3xl font-bold">Your Dashboard</h2>
+                    <p id="dashboardUserEmail" class="text-gray-500 mt-1">Manage subscriptions.</p>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                    <!-- Payment Method Card -->
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                         <h3 class="text-xl font-semibold mb-4">Payment Method</h3>
-                        <div id="paymentMethodContainer">
-                            <!-- This will be populated by JS -->
-                        </div>
-                    </div>
-                    <!-- Monthly Total Card -->
-                     <div class="bg-white p-6 rounded-xl shadow-lg">
-                         <h3 class="text-xl font-semibold mb-4">Your Monthly Total</h3>
-                        <div id="monthlyTotalContainer" class="flex items-center">
-                             <!-- This will be populated by JS -->
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Subscriptions List -->
+                 <button id="addNewSubscriptionBtn" class="mt-4 md:mt-0 bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg flex items-center">
+                    <svg class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    Add New Subscription
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h3 class="text-xl font-semibold mb-4">Your Subscriptions</h3>
-                    <div id="subscriptionsList" class="space-y-4">
-                        <!-- Subscriptions will be dynamically loaded here -->
-                        <div class="loader"></div>
-                    </div>
+                     <h3 class="text-xl font-semibold mb-4">Payment Method</h3>
+                    <div id="paymentMethodContainer"></div>
                 </div>
+                 <div class="bg-white p-6 rounded-xl shadow-lg">
+                     <h3 class="text-xl font-semibold mb-4">Your Monthly Total</h3>
+                    <div id="monthlyTotalContainer" class="flex items-center"></div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h3 class="text-xl font-semibold mb-4">Your Subscriptions</h3>
+                <div id="subscriptionsList" class="space-y-4"></div>
             </div>
         </section>
 
         <!-- Add Subscription Section -->
-        <section id="addSubscriptionSection" class="section">
+         <section id="addSubscriptionSection" class="section">
              <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
                 <h2 class="text-2xl md:text-3xl font-bold mb-6">Add a New Subscription</h2>
                 <form id="addSubscriptionForm" class="space-y-4">
                     <div>
                         <label for="subscriptionName" class="block text-sm font-medium text-gray-700 mb-1">Subscription Name</label>
-                        <input type="text" id="subscriptionName" placeholder="e.g., Netflix, Spotify" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
+                        <input type="text" id="subscriptionName" placeholder="e.g., Netflix, Spotify" class="w-full px-4 py-3 border rounded-lg" required>
                     </div>
                      <div>
                         <label for="subscriptionCost" class="block text-sm font-medium text-gray-700 mb-1">Monthly Cost (USD)</label>
-                        <input type="number" id="subscriptionCost" placeholder="e.g., 15.99" step="0.01" min="0" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
+                        <input type="number" id="subscriptionCost" placeholder="e.g., 15.99" step="0.01" min="0" class="w-full px-4 py-3 border rounded-lg" required>
                     </div>
                     <div class="flex items-center space-x-4 pt-4">
-                        <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
-                            Create Virtual Card
-                        </button>
-                        <button type="button" id="cancelAddSubscriptionBtn" class="w-full bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-300 transition-all">
-                            Cancel
-                        </button>
+                        <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg">Create Virtual Card</button>
+                        <button type="button" id="cancelAddSubscriptionBtn" class="w-full bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg">Cancel</button>
                     </div>
                 </form>
             </div>
@@ -186,268 +136,253 @@
             <p class="text-gray-600 mb-6">Securely link your card. This will be used for your single monthly bill.</p>
             <form id="paymentForm">
                 <div class="space-y-4">
-                    <input id="cardholder-name" type="text" placeholder="Cardholder Name" class="w-full px-4 py-3 border border-gray-300 rounded-lg" required>
-                    <!-- This div is a container for the secure Stripe Card Element -->
+                    <input id="cardholder-name" type="text" placeholder="Cardholder Name" class="w-full px-4 py-3 border rounded-lg" required>
                     <div id="card-element" class="StripeElement"></div>
-                    <!-- Used to display form errors. -->
                     <div id="card-errors" role="alert" class="text-red-600 text-sm mt-2"></div>
                 </div>
                 <div class="mt-8 flex justify-end space-x-3">
-                    <button type="button" id="cancelPaymentBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
-                    <button id="submitPaymentBtn" type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700">Link Card</button>
+                    <button type="button" id="cancelPaymentBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg">Cancel</button>
+                    <button id="submitPaymentBtn" type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg">Link Card</button>
                 </div>
             </form>
         </div>
     </div>
-
-
     <footer class="text-center py-8 text-gray-500 text-sm">
         <p>&copy; 2025 PayPouch. All Rights Reserved.</p>
     </footer>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const API_BASE_URL = 'http://ec2-44-201-116-80.compute-1.amazonaws.com:3001';
+            // =================================================================
+            // --- CONFIGURATION - UPDATE THESE VALUES ---
+            // =================================================================
+            const API_BASE_URL = 'http://ec2-44-201-116-80.compute-1.amazonaws.com:3001'; // e.g., 'http://ec2-xx-xx-xx-xx.compute-1.amazonaws.com:3000'
+            const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RcqgJPtA8gOUOMLX57vK3ejGsjVuxYCDrzSvOLp55rQuGgaG7REDSnIOFYqSpIXWX88F0sW0KomlbQaTLySy3Oy00769U1Mzr'; // Your Stripe Publishable Key
             
-            // --- IMPORTANT: Replace with your own Stripe Publishable Key ---
-            const STRIPE_PUBLISHABLE_KEY = 'pk_test_...'; // e.g., pk_test_51...
-            if (STRIPE_PUBLISHABLE_KEY === 'pk_test_...') {
-                console.warn("Stripe Publishable Key not set. Payment form will not work.");
-            }
+            const cognitoConfig = {
+                UserPoolId: 'us-east-1_LdSNvXMNV', // e.g., 'us-east-1_xxxxxxxxx'
+                ClientId: '2brgofcp5gmlqc4hp1m8bl4vpp',   // Your App Client ID from Cognito
+            };
+            // =================================================================
+
+
+            // --- INITIALIZATION ---
             const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
             let cardElement;
+            const userPool = new AmazonCognitoIdentity.CognitoUserPool({
+                UserPoolId: cognitoConfig.UserPoolId,
+                ClientId: cognitoConfig.ClientId,
+            });
+            let currentUserSession = null;
+            let currentUserDetails = null;
 
-            // --- Simulated User Database & State ---
-            let usersDB = JSON.parse(localStorage.getItem('paypouch_usersDB')) || {};
-            let currentUser = null;
-
+            // --- DOM ELEMENT REFERENCES ---
             const sections = {
                 signUp: document.getElementById('signUpSection'),
+                confirm: document.getElementById('confirmSection'),
                 login: document.getElementById('loginSection'),
                 dashboard: document.getElementById('dashboardSection'),
-                addSubscription: document.getElementById('addSubscriptionSection')
+                addSubscription: document.getElementById('addSubscriptionSection'),
             };
-
             const signUpForm = document.getElementById('signUpForm');
+            const confirmForm = document.getElementById('confirmForm');
             const loginForm = document.getElementById('loginForm');
             const logoutBtn = document.getElementById('logoutBtn');
             const showLoginLink = document.getElementById('showLoginLink');
             const showSignUpLink = document.getElementById('showSignUpLink');
-            
-            const addNewSubscriptionBtn = document.getElementById('addNewSubscriptionBtn');
-            const cancelAddSubscriptionBtn = document.getElementById('cancelAddSubscriptionBtn');
-            const addSubscriptionForm = document.getElementById('addSubscriptionForm');
-            const subscriptionsList = document.getElementById('subscriptionsList');
-            const dashboardWelcome = document.getElementById('dashboardWelcome');
-            const dashboardUserEmail = document.getElementById('dashboardUserEmail');
-            
+            const resendCodeLink = document.getElementById('resendCodeLink');
             const paymentModal = document.getElementById('paymentModal');
             const paymentForm = document.getElementById('paymentForm');
             const cancelPaymentBtn = document.getElementById('cancelPaymentBtn');
+            const addNewSubscriptionBtn = document.getElementById('addNewSubscriptionBtn');
+            const addSubscriptionForm = document.getElementById('addSubscriptionForm');
+            const cancelAddSubscriptionBtn = document.getElementById('cancelAddSubscriptionBtn');
             const paymentMethodContainer = document.getElementById('paymentMethodContainer');
+            const subscriptionsList = document.getElementById('subscriptionsList');
             const monthlyTotalContainer = document.getElementById('monthlyTotalContainer');
 
 
             function showSection(sectionName) {
-                Object.values(sections).forEach(section => {
-                    section.classList.remove('active');
-                    section.style.display = 'none';
-                });
-
-                if (sections[sectionName]) {
-                    sections[sectionName].style.display = 'block';
-                    sections[sectionName].classList.add('active');
-                }
-
+                Object.values(sections).forEach(s => s.style.display = 'none');
+                if (sections[sectionName]) sections[sectionName].style.display = 'block';
                 paymentModal.classList.remove('active');
                 logoutBtn.style.display = (sectionName === 'dashboard') ? 'block' : 'none';
             }
-
-            // --- API Communication Functions ---
-            async function fetchSubscriptions() {
-                if (!currentUser) return;
-                subscriptionsList.innerHTML = `<div class="loader"></div>`;
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/subscriptions/${currentUser.id}`);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    const subs = await response.json();
-                    renderSubscriptions(subs);
-                } catch (error) {
-                    console.error('Error fetching subscriptions:', error);
-                    const errorMessage = `<div class="text-center text-red-600 p-4 border border-red-200 bg-red-50 rounded-lg"><p class="font-bold">Could not connect to the local server.</p><p class="text-sm mt-2">Please make sure your Node.js local server ('server.js') is running on <strong>http://localhost:3000</strong> and try again.</p><p class="text-xs mt-2 text-gray-500">Error: ${error.message}</p></div>`;
-                    subscriptionsList.innerHTML = errorMessage;
-                }
-            }
             
-            async function createSubscription(name, cost) {
-                if (!currentUser) return;
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/subscriptions`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: currentUser.id, subscriptionName: name, cost: cost })
-                    });
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    await response.json();
-                    fetchSubscriptions();
-                } catch (error) {
-                    console.error('Error creating subscription:', error);
-                    alert(`Could not create subscription.\n\nPlease make sure your local backend server is running and accessible.\n\nError: ${error.message}`);
-                }
-            }
-
-            // --- Authentication & Session Management ---
+            // --- AUTHENTICATION FLOW (COGNITO) ---
             function checkSession() {
-                const savedUser = localStorage.getItem('paypouch_currentUser');
-                if (savedUser) {
-                    currentUser = JSON.parse(savedUser);
-                    dashboardWelcome.textContent = `Welcome, ${currentUser.firstName}!`;
-                    dashboardUserEmail.textContent = currentUser.email;
-                    renderPaymentMethod();
-                    showSection('dashboard');
-                    fetchSubscriptions();
+                const cognitoUser = userPool.getCurrentUser();
+                if (cognitoUser != null) {
+                    cognitoUser.getSession((err, session) => {
+                        if (err || !session.isValid()) {
+                            showSection('login');
+                            return;
+                        }
+                        currentUserSession = session;
+                        showDashboard(cognitoUser);
+                    });
                 } else {
                     showSection('signUp');
                 }
             }
             
-            function loginUser(user) {
-                currentUser = user;
-                localStorage.setItem('paypouch_currentUser', JSON.stringify(currentUser));
-                dashboardWelcome.textContent = `Welcome, ${currentUser.firstName}!`;
-                dashboardUserEmail.textContent = currentUser.email;
-                renderPaymentMethod();
-                showSection('dashboard');
-                fetchSubscriptions();
-            }
+            function showDashboard(cognitoUser) {
+                cognitoUser.getUserAttributes(async (err, attributes) => {
+                    if (err) { alert(err.message || JSON.stringify(err)); return; }
+                    
+                    currentUserDetails = {};
+                    attributes.forEach(attr => currentUserDetails[attr.Name] = attr.Value);
+                    
+                    document.getElementById('dashboardWelcome').textContent = `Welcome, ${currentUserDetails.given_name}!`;
+                    document.getElementById('dashboardUserEmail').textContent = currentUserDetails.email;
+                    
+                    // This demo continues to use localStorage to bridge the gap between Cognito
+                    // and our backend, which doesn't yet have a profile endpoint.
+                    await fetchUserProfileFromLocal(currentUserDetails.sub);
 
-            function logoutUser() {
-                currentUser = null;
-                localStorage.removeItem('paypouch_currentUser');
-                document.getElementById('loginForm').reset();
-                showSection('login');
-            }
-
-            // --- Payment Method Logic ---
-            function setupStripeElement() {
-                if(cardElement) {
-                    cardElement.destroy();
-                }
-                const elements = stripe.elements();
-                const style = {
-                    base: {
-                        color: "#32325d",
-                        fontFamily: 'Inter, sans-serif',
-                        fontSmoothing: "antialiased",
-                        fontSize: "16px",
-                        "::placeholder": {
-                            color: "#aab7c4"
-                        }
-                    },
-                    invalid: {
-                        color: "#fa755a",
-                        iconColor: "#fa755a"
-                    }
-                };
-                cardElement = elements.create("card", { style: style });
-                cardElement.mount("#card-element");
-
-                cardElement.on('change', function(event) {
-                    const displayError = document.getElementById('card-errors');
-                    if (event.error) {
-                        displayError.textContent = event.error.message;
-                    } else {
-                        displayError.textContent = '';
-                    }
+                    renderPaymentMethod(); 
+                    fetchSubscriptions();
+                    showSection('dashboard');
                 });
             }
 
-            function renderPaymentMethod() {
-                if (!currentUser) return;
-                const paymentLinked = localStorage.getItem(`paymentLinked_${currentUser.id}`);
-                const paymentDetails = JSON.parse(localStorage.getItem(`paymentDetails_${currentUser.id}`));
+            // --- ** FULL FUNCTIONALITY RESTORED ** ---
 
-                if (paymentLinked && paymentDetails) {
-                    paymentMethodContainer.innerHTML = `
-                        <div class="flex items-center justify-between bg-gray-100 p-4 rounded-lg">
-                            <div class="flex items-center">
-                                 <svg class="h-8 w-8 text-green-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                                <div>
-                                    <p class="font-medium">${paymentDetails.brand.charAt(0).toUpperCase() + paymentDetails.brand.slice(1)} Card Linked</p>
-                                    <p class="text-sm text-gray-500">Ending in ${paymentDetails.last4} &bull; Expires ${paymentDetails.exp_month}/${paymentDetails.exp_year}</p>
-                                </div>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button id="editPaymentBtn" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300 text-xs">Edit</button>
-                                <button id="removePaymentBtn" class="bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-md hover:bg-red-200 text-xs">Remove</button>
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('editPaymentBtn').addEventListener('click', () => {
-                        paymentModal.classList.add('active');
-                        setupStripeElement();
-                    });
-                    document.getElementById('removePaymentBtn').addEventListener('click', () => {
-                        if (confirm('Are you sure you want to remove your payment method?')) {
-                            localStorage.removeItem(`paymentLinked_${currentUser.id}`);
-                            localStorage.removeItem(`paymentDetails_${currentUser.id}`);
-                            renderPaymentMethod();
+            // --- API Communication & Data Functions ---
+            async function fetchUserProfileFromLocal(userId) {
+                const localUserData = JSON.parse(localStorage.getItem(userId)) || {};
+                currentUserDetails.stripeCustomerId = localUserData.stripeCustomerId;
+                currentUserDetails.paymentDetails = localUserData.paymentDetails;
+            }
+
+            async function fetchSubscriptions() {
+                if (!currentUserDetails) return;
+                subscriptionsList.innerHTML = `<div class="loader"></div>`;
+                try {
+                    // NOTE: Your backend API Gateway needs to be secured with a Cognito authorizer
+                    // for the Authorization header to work.
+                    const response = await fetch(`${API_BASE_URL}/api/subscriptions/${currentUserDetails.sub}`, {
+                        headers: {
+                            'Authorization': currentUserSession.getIdToken().getJwtToken()
                         }
                     });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const subs = await response.json();
+                    renderSubscriptions(subs);
+                } catch (error) {
+                    subscriptionsList.innerHTML = `<div class="text-center text-red-500 p-4 border rounded-lg"><p>Could not load subscriptions.</p></div>`;
+                }
+            }
 
-                } else {
-                    paymentMethodContainer.innerHTML = `
-                        <div class="flex items-center justify-between bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                            <div>
-                                <p class="font-medium text-yellow-800">Action Required</p>
-                                <p class="text-sm text-yellow-700">Please link a payment method to activate your account.</p>
-                            </div>
-                            <button id="linkPaymentBtn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 text-sm">Link Method</button>
-                        </div>
-                    `;
-                    document.getElementById('linkPaymentBtn').addEventListener('click', () => {
-                        paymentModal.classList.add('active');
-                        setupStripeElement();
+            async function createSubscription(name, cost) {
+                if (!currentUserDetails) return;
+                try {
+                    await fetch(`${API_BASE_URL}/api/subscriptions`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': currentUserSession.getIdToken().getJwtToken()
+                        },
+                        body: JSON.stringify({ userId: currentUserDetails.sub, subscriptionName: name, cost: cost })
                     });
+                    fetchSubscriptions();
+                } catch (error) {
+                    alert(`Could not create subscription. Error: ${error.message}`);
                 }
             }
 
 
-            // --- Event Listeners ---
-            showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showSection('login'); });
-            showSignUpLink.addEventListener('click', (e) => { e.preventDefault(); showSection('signUp'); });
-
-            signUpForm.addEventListener('submit', (e) => {
+            // --- EVENT LISTENERS ---
+            
+            signUpForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const firstName = document.getElementById('signUpFirstName').value;
                 const lastName = document.getElementById('signUpLastName').value;
                 const email = document.getElementById('signUpEmail').value;
                 const password = document.getElementById('signUpPassword').value;
-                if (!firstName || !lastName || !email || !password) return alert('Please fill out all fields.');
-                if (usersDB[email]) return alert('An account with this email already exists. Please log in.');
-                
-                const userId = `user_${Math.random().toString(36).substr(2, 9)}`;
-                usersDB[email] = { password, id: userId, firstName, lastName };
-                localStorage.setItem('paypouch_usersDB', JSON.stringify(usersDB));
-                
-                loginUser({email, id: userId, firstName, lastName});
+
+                const attributeList = [
+                    new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'email', Value: email }),
+                    new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'given_name', Value: firstName }),
+                    new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'family_name', Value: lastName }),
+                ];
+
+                userPool.signUp(email, password, attributeList, null, async (err, result) => {
+                    if (err) { alert(err.message || JSON.stringify(err)); return; }
+                    
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/api/create-user`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ userId: result.userSub, email, firstName, lastName })
+                        });
+                        if (!response.ok) throw new Error('Failed to create user profile on backend.');
+                        const { stripeCustomerId } = await response.json();
+                        
+                        localStorage.setItem(result.userSub, JSON.stringify({ stripeCustomerId }));
+
+                    } catch (serverError) {
+                        alert(`Sign up succeeded, but could not create backend profile: ${serverError.message}`);
+                        return;
+                    }
+                    
+                    document.getElementById('confirmEmail').textContent = email;
+                    showSection('confirm');
+                });
+            });
+
+            confirmForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('signUpEmail').value || document.getElementById('loginEmail').value;
+                const code = document.getElementById('confirmationCode').value;
+                new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool })
+                    .confirmRegistration(code, true, (err, result) => {
+                        if (err) { alert(err.message || JSON.stringify(err)); return; }
+                        alert('Account confirmed! You can now log in.');
+                        loginForm.reset();
+                        document.getElementById('loginEmail').value = email;
+                        showSection('login');
+                    });
+            });
+            
+             resendCodeLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('signUpEmail').value || document.getElementById('loginEmail').value;
+                if (!email) { alert("Please enter your email in the sign-up or login form first."); return; }
+                new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool })
+                    .resendConfirmationCode((err, result) => {
+                        if (err) { alert(err.message || JSON.stringify(err)); return; }
+                        alert('A new confirmation code has been sent to your email.');
+                    });
             });
 
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
-                const user = usersDB[email];
-                if (user && user.password === password) {
-                    loginUser({email, id: user.id, firstName: user.firstName, lastName: user.lastName});
-                } else {
-                    alert('Invalid email or password.');
-                }
+                const cognitoUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
+                
+                cognitoUser.authenticateUser(new AmazonCognitoIdentity.AuthenticationDetails({ Username: email, Password: password }), {
+                    onSuccess: (session) => {
+                        currentUserSession = session;
+                        showDashboard(cognitoUser);
+                    },
+                    onFailure: (err) => alert(err.message || JSON.stringify(err)),
+                });
             });
             
-            logoutBtn.addEventListener('click', logoutUser);
+            logoutBtn.addEventListener('click', () => {
+                userPool.getCurrentUser()?.signOut();
+                currentUserSession = null;
+                currentUserDetails = null;
+                showSection('login');
+            });
+
+            showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showSection('login'); });
+            showSignUpLink.addEventListener('click', (e) => { e.preventDefault(); showSection('signUp'); });
             addNewSubscriptionBtn.addEventListener('click', () => showSection('addSubscription'));
             cancelAddSubscriptionBtn.addEventListener('click', () => { addSubscriptionForm.reset(); showSection('dashboard'); });
+            cancelPaymentBtn.addEventListener('click', () => { paymentModal.classList.remove('active'); if (cardElement) cardElement.destroy(); });
 
             addSubscriptionForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -458,99 +393,105 @@
                     addSubscriptionForm.reset();
                     showSection('dashboard');
                 } else {
-                    alert('Please enter a valid subscription name and cost.');
+                    alert('Please enter valid details.');
                 }
             });
 
-            // Payment Modal Listeners
-            cancelPaymentBtn.addEventListener('click', () => {
-                paymentModal.classList.remove('active');
-                if (cardElement) cardElement.destroy();
-            });
-            
             paymentForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if (!currentUser) return;
-                const cardholderName = document.getElementById('cardholder-name').value;
-
+                if (!currentUserDetails || !currentUserDetails.stripeCustomerId) {
+                    alert('Could not link card. User profile is missing Stripe ID. Please log in again.');
+                    return;
+                }
+                
                 const { paymentMethod, error } = await stripe.createPaymentMethod({
                     type: 'card',
-                    card: cardElement,
-                    billing_details: {
-                        name: cardholderName,
-                    },
+                    card: cardElement
                 });
 
                 if (error) {
                     document.getElementById('card-errors').textContent = error.message;
                 } else {
-                    console.log('Stripe PaymentMethod successfully created:', paymentMethod);
-                    // --- SIMULATION ---
-                    // In a real app, you would send paymentMethod.id to your backend.
-                    // For now, we'll just save it to localStorage to simulate it being linked.
-                    const paymentDetails = {
-                        brand: paymentMethod.card.brand,
-                        last4: paymentMethod.card.last4,
-                        exp_month: paymentMethod.card.exp_month,
-                        exp_year: paymentMethod.card.exp_year,
-                    }
-                    localStorage.setItem(`paymentLinked_${currentUser.id}`, 'true');
-                    localStorage.setItem(`paymentDetails_${currentUser.id}`, JSON.stringify(paymentDetails));
+                    try {
+                        await fetch(`${API_BASE_URL}/api/save-payment-method`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': currentUserSession.getIdToken().getJwtToken()
+                            },
+                            body: JSON.stringify({
+                                stripeCustomerId: currentUserDetails.stripeCustomerId,
+                                paymentMethodId: paymentMethod.id
+                            })
+                        });
+                        
+                        const paymentDetails = {
+                            brand: paymentMethod.card.brand,
+                            last4: paymentMethod.card.last4,
+                            exp_month: paymentMethod.card.exp_month,
+                            exp_year: paymentMethod.card.exp_year,
+                        };
+                        currentUserDetails.paymentDetails = paymentDetails;
+                        
+                        let localUserData = JSON.parse(localStorage.getItem(currentUserDetails.sub)) || {};
+                        localUserData.paymentDetails = paymentDetails;
+                        localStorage.setItem(currentUserDetails.sub, JSON.stringify(localUserData));
 
-                    paymentForm.reset();
-                    if(cardElement) cardElement.destroy();
-                    paymentModal.classList.remove('active');
-                    renderPaymentMethod();
+                        paymentModal.classList.remove('active');
+                        renderPaymentMethod();
+                    } catch (serverError) {
+                        alert('Could not save payment method on server.');
+                    }
                 }
             });
 
-            // --- Rendering Function ---
+            // --- RENDER FUNCTIONS ---
+            function setupStripeElement() {
+                if (cardElement) cardElement.destroy();
+                cardElement = stripe.elements().create("card");
+                cardElement.mount("#card-element");
+                cardElement.on('change', event => document.getElementById('card-errors').textContent = event.error ? event.error.message : '');
+            }
+
+            function renderPaymentMethod() {
+                if (!currentUserDetails) return;
+                const paymentDetails = currentUserDetails.paymentDetails;
+                if (paymentDetails) {
+                    paymentMethodContainer.innerHTML = `<div class="flex items-center justify-between bg-gray-100 p-4 rounded-lg"><div class="flex items-center"><svg class="h-8 w-8 text-green-500 mr-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><div><p class="font-medium">${paymentDetails.brand.charAt(0).toUpperCase() + paymentDetails.brand.slice(1)} Card Linked</p><p class="text-sm text-gray-500">Ending in ${paymentDetails.last4} &bull; Expires ${paymentDetails.exp_month}/${paymentDetails.exp_year}</p></div></div><div class="flex space-x-2"><button id="editPaymentBtn" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300 text-xs">Edit</button></div></div>`;
+                    document.getElementById('editPaymentBtn').addEventListener('click', () => {
+                        paymentModal.classList.add('active');
+                        setupStripeElement();
+                    });
+                } else {
+                    paymentMethodContainer.innerHTML = `<div class="flex items-center justify-between bg-yellow-50 border border-yellow-200 p-4 rounded-lg"><div><p class="font-medium text-yellow-800">Action Required</p><p class="text-sm text-yellow-700">Please link a payment method.</p></div><button id="linkPaymentBtn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 text-sm">Link Method</button></div>`;
+                    document.getElementById('linkPaymentBtn').addEventListener('click', () => {
+                        paymentModal.classList.add('active');
+                        setupStripeElement();
+                    });
+                }
+            }
+
             function renderSubscriptions(subs) {
                 let totalCost = 0;
                 if (!subs || subs.length === 0) {
-                     subscriptionsList.innerHTML = `<div class="text-center py-8 text-gray-500"><p>You haven't added any subscriptions yet.</p><p class="text-sm">Click "Add New Subscription" to get started!</p></div>`;
+                     subscriptionsList.innerHTML = `<div class="text-center py-8 text-gray-500"><p>You haven't added any subscriptions yet.</p></div>`;
                 } else {
-                    subscriptionsList.innerHTML = ''; // Clear current list
+                    subscriptionsList.innerHTML = '';
                     subs.forEach(sub => {
                         totalCost += parseFloat(sub.cost);
                         const subElement = document.createElement('div');
                         subElement.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg border';
                         const dummyCard = `**** **** **** ${sub.subscriptionId.slice(-4)}`;
-                        subElement.innerHTML = `
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-4">
-                                    <span class="font-bold text-indigo-600">${sub.subscriptionName.charAt(0).toUpperCase()}</span>
-                                </div>
-                                <div>
-                                    <p class="font-semibold">${sub.subscriptionName}</p>
-                                    <p class="text-sm text-gray-500">Added: ${new Date(sub.createdAt).toLocaleDateString()}</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                               <p class="font-semibold text-lg">$${parseFloat(sub.cost).toFixed(2)}</p>
-                               <p class="text-sm text-gray-500">Card: ${dummyCard}</p>
-                            </div>
-                        `;
+                        subElement.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-4"><span class="font-bold text-indigo-600">${sub.subscriptionName.charAt(0).toUpperCase()}</span></div><div><p class="font-semibold">${sub.subscriptionName}</p><p class="text-sm text-gray-500">Added: ${new Date(sub.createdAt).toLocaleDateString()}</p></div></div><div class="text-right"><p class="font-semibold text-lg">$${parseFloat(sub.cost).toFixed(2)}</p><p class="text-sm text-gray-500">Card: ${dummyCard}</p></div>`;
                         subscriptionsList.appendChild(subElement);
                     });
                 }
-                
-                // Render the total cost
-                monthlyTotalContainer.innerHTML = `
-                    <svg class="h-8 w-8 text-indigo-600 mr-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <div>
-                        <p class="font-bold text-3xl text-gray-800">$${totalCost.toFixed(2)}</p>
-                        <p class="text-sm text-gray-500">This is your estimated bill for next month.</p>
-                    </div>
-                `;
+                monthlyTotalContainer.innerHTML = `<svg class="h-8 w-8 text-indigo-600 mr-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg><div><p class="font-bold text-3xl text-gray-800">$${totalCost.toFixed(2)}</p><p class="text-sm text-gray-500">Your estimated monthly bill.</p></div>`;
             }
             
-            // --- Initial State Check ---
+            // --- INITIAL LOAD ---
             checkSession();
         });
     </script>
-
 </body>
 </html>

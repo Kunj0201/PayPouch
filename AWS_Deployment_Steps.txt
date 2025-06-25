@@ -1,5 +1,18 @@
 Steps of deployment to AWS:
 
+           // =================================================================
+            // --- CONFIGURATION - UPDATE THESE VALUES ---
+            // =================================================================
+            const API_BASE_URL = 'http://ec2-44-201-116-80.compute-1.amazonaws.com:3001'; // e.g., 'http://ec2-xx-xx-xx-xx.compute-1.amazonaws.com:3000'
+            const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RcqgJPtA8gOUOMLX57vK3ejGsjVuxYCDrzSvOLp55rQuGgaG7REDSnIOFYqSpIXWX88F0sW0KomlbQaTLySy3Oy00769U1Mzr'; // Your Stripe Publishable Key
+            
+            const cognitoConfig = {
+                UserPoolId: 'us-east-1_LdSNvXMNV', // e.g., 'us-east-1_xxxxxxxxx'
+                ClientId: '2brgofcp5gmlqc4hp1m8bl4vpp',   // Your App Client ID from Cognito
+            };
+            // =================================================================
+
+
 1. Creating a DynamoDB table:
 
 aws dynamodb create-table \
