@@ -1,0 +1,8 @@
+There are many sales pitch for htins htings and will keep on adding as I think about it:
+
+1. One of the biggest things the subscription providers spend their money is making sure that the user payment details are not leaked, but let's say if the users are using our service, even if the  big subscription providers have a leak, the only 
+   thing being leaked is their virtual credit card which is made in such a way that it cannot be used anywhere else other than that particulkat website so this in turn relieves a small amount of pressure form these companies.
+
+2. Almost everyone in this world will have more than 1 subscriptions that means their payment details are being stored with multiple companies, but what if even one of them have a leak. To tackle this users only have to add their payment details on our website and 
+   for all their subscriptions they will add the virtual credit card generated which gives them a security from these leaks, since even with a leak their actual bank details are not being leaked it's just the virtual credit card.
+   
