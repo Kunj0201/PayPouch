@@ -12,6 +12,8 @@ const { v4: uuidv4 } = require('uuid');
 // ** NEW: Security-related dependencies **
 const rateLimit = require('express-rate-limit');
 const { body, validationResult, param } = require('express-validator');
+// ** STEP 1: Import the authorization middleware from the file you created **
+const authorizationMiddleware = require('./authMiddleware');
 
 // --- Initialization ---
 const app = express();
@@ -45,6 +47,7 @@ app.use(limiter); // Apply the rate limiting middleware to all requests
  */
 app.post(
     '/api/subscriptions',
+    authorizationMiddleware, // Middleware runs before the validation and main logic
     // ** NEW: Validation rules for the request body **
     body('userId').isString().withMessage('User ID must be a string.').notEmpty().withMessage('User ID cannot be empty.'),
     body('subscriptionName').isString().isLength({ min: 1, max: 100 }).withMessage('Subscription name must be between 1 and 100 characters.'),
@@ -96,6 +99,7 @@ app.post(
  */
 app.get(
     '/api/subscriptions/:userId',
+    authorizationMiddleware, // Middleware runs before the validation and main logic
     // ** NEW: Validation rule for the URL parameter **
     param('userId').isString().withMessage('User ID must be a string.').notEmpty().withMessage('User ID cannot be empty.'),
 
