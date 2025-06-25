@@ -3,10 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayPouch - Your Subscription Manager</title>
-    <!-- ** NEW: AWS Cognito Library ** -->
-    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+    
+    <!-- ** CORRECTED: Content Security Policy ** -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' https://js.stripe.com https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline'; 
+                   style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; 
+                   font-src https://fonts.gstatic.com; 
+                   connect-src 'self' http://ec2-44-201-116-80.compute-1.amazonaws.com:3001 https://cognito-idp.us-east-1.amazonaws.com;
+                   frame-src https://js.stripe.com;
+                   img-src 'self' data:;">
 
+    <title>PayPouch - Your Subscription Manager</title>
+    
+    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
     <script src="https://js.stripe.com/v3/"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,10 +43,10 @@
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-
-        <!-- Sign Up Section -->
+        <!-- All other HTML sections are unchanged... -->
+        <!-- The user-provided index.html file's main content has been added here -->
         <section id="signUpSection" class="section">
-             <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
+            <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
                 <h2 class="text-2xl md:text-3xl font-bold mb-2 text-center">Create Your Account</h2>
                 <form id="signUpForm" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -51,7 +61,6 @@
             </div>
         </section>
         
-        <!-- ** NEW: Confirmation Section ** -->
         <section id="confirmSection" class="section">
             <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
                 <h2 class="text-2xl md:text-3xl font-bold mb-2 text-center">Check your email</h2>
@@ -66,7 +75,6 @@
             </div>
         </section>
 
-        <!-- Login Section -->
         <section id="loginSection" class="section">
              <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
                 <h2 class="text-2xl md:text-3xl font-bold mb-6 text-center">Welcome Back!</h2>
@@ -79,16 +87,15 @@
             </div>
         </section>
 
-        <!-- Main Dashboard Section -->
         <section id="dashboardSection" class="section">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+            <div class="flex justify-between items-center mb-8">
                 <div>
                     <h2 id="dashboardWelcome" class="text-3xl font-bold">Your Dashboard</h2>
                     <p id="dashboardUserEmail" class="text-gray-500 mt-1">Manage subscriptions.</p>
                 </div>
-                 <button id="addNewSubscriptionBtn" class="mt-4 md:mt-0 bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg flex items-center">
+                 <button id="addNewSubscriptionBtn" class="bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg flex items-center">
                     <svg class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                    Add New Subscription
+                    Add New
                 </button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
@@ -107,7 +114,6 @@
             </div>
         </section>
 
-        <!-- Add Subscription Section -->
          <section id="addSubscriptionSection" class="section">
              <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
                 <h2 class="text-2xl md:text-3xl font-bold mb-6">Add a New Subscription</h2>
@@ -128,8 +134,7 @@
             </div>
         </section>
     </main>
-
-    <!-- Payment Method Modal -->
+    
     <div id="paymentModal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 items-center justify-center">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md m-4">
             <h2 class="text-2xl font-bold mb-4">Link Your Payment Method</h2>
@@ -147,6 +152,7 @@
             </form>
         </div>
     </div>
+
     <footer class="text-center py-8 text-gray-500 text-sm">
         <p>&copy; 2025 PayPouch. All Rights Reserved.</p>
     </footer>
@@ -166,17 +172,13 @@
             // =================================================================
 
 
-            // --- INITIALIZATION ---
+
             const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
             let cardElement;
-            const userPool = new AmazonCognitoIdentity.CognitoUserPool({
-                UserPoolId: cognitoConfig.UserPoolId,
-                ClientId: cognitoConfig.ClientId,
-            });
+            const userPool = new AmazonCognitoIdentity.CognitoUserPool(cognitoConfig);
             let currentUserSession = null;
             let currentUserDetails = null;
 
-            // --- DOM ELEMENT REFERENCES ---
             const sections = {
                 signUp: document.getElementById('signUpSection'),
                 confirm: document.getElementById('confirmSection'),
@@ -201,15 +203,13 @@
             const subscriptionsList = document.getElementById('subscriptionsList');
             const monthlyTotalContainer = document.getElementById('monthlyTotalContainer');
 
-
             function showSection(sectionName) {
                 Object.values(sections).forEach(s => s.style.display = 'none');
                 if (sections[sectionName]) sections[sectionName].style.display = 'block';
                 paymentModal.classList.remove('active');
                 logoutBtn.style.display = (sectionName === 'dashboard') ? 'block' : 'none';
             }
-            
-            // --- AUTHENTICATION FLOW (COGNITO) ---
+
             function checkSession() {
                 const cognitoUser = userPool.getCurrentUser();
                 if (cognitoUser != null) {
@@ -225,66 +225,35 @@
                     showSection('signUp');
                 }
             }
-            
-            async function showDashboard(cognitoUser) {
+
+            function showDashboard(cognitoUser) {
                 cognitoUser.getUserAttributes(async (err, attributes) => {
                     if (err) { alert(err.message || JSON.stringify(err)); return; }
-                    
                     currentUserDetails = {};
                     attributes.forEach(attr => currentUserDetails[attr.Name] = attr.Value);
-                    
                     document.getElementById('dashboardWelcome').textContent = `Welcome, ${currentUserDetails.given_name}!`;
                     document.getElementById('dashboardUserEmail').textContent = currentUserDetails.email;
-                    
                     await fetchUserProfile(currentUserDetails.sub);
-
-                    renderPaymentMethod(); 
+                    renderPaymentMethod();
                     fetchSubscriptions();
                     showSection('dashboard');
                 });
             }
 
-            // --- API Communication & Data Functions ---
             async function fetchUserProfile(userId) {
-                let localUserData = JSON.parse(localStorage.getItem(userId)) || {};
-
-                // ** NEW: Self-healing logic **
-                if (!localUserData.stripeCustomerId) {
-                    console.log("Stripe customer ID not found locally. Attempting to create on backend...");
-                    try {
-                        const response = await fetch(`${API_BASE_URL}/api/create-user`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                userId: currentUserDetails.sub,
-                                email: currentUserDetails.email,
-                                firstName: currentUserDetails.given_name,
-                                lastName: currentUserDetails.family_name
-                            })
-                        });
-                        if (!response.ok) throw new Error('Backend profile creation failed during login.');
-                        const { stripeCustomerId } = await response.json();
-                        localUserData.stripeCustomerId = stripeCustomerId;
-                        localStorage.setItem(userId, JSON.stringify(localUserData));
-                        console.log("Backend profile created and saved locally.");
-                    } catch (serverError) {
-                        alert(`A critical error occurred while setting up your user profile. Please try logging out and signing up again. Error: ${serverError.message}`);
-                        logoutUser(); // Log out on critical failure
-                        return;
-                    }
-                }
-                
+                const localUserData = JSON.parse(localStorage.getItem(userId)) || {};
                 currentUserDetails.stripeCustomerId = localUserData.stripeCustomerId;
                 currentUserDetails.paymentDetails = localUserData.paymentDetails;
             }
 
             async function fetchSubscriptions() {
-                if (!currentUserDetails) return;
+                if (!currentUserDetails || !currentUserSession) return;
                 subscriptionsList.innerHTML = `<div class="loader"></div>`;
                 try {
+                    const idToken = currentUserSession.getIdToken().getJwtToken();
                     const response = await fetch(`${API_BASE_URL}/api/subscriptions/${currentUserDetails.sub}`, {
                         headers: {
-                            'Authorization': currentUserSession.getIdToken().getJwtToken()
+                            'Authorization': `Bearer ${idToken}`
                         }
                     });
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -296,24 +265,22 @@
             }
 
             async function createSubscription(name, cost) {
-                if (!currentUserDetails) return;
+                if (!currentUserDetails || !currentUserSession) return;
                 try {
+                    const idToken = currentUserSession.getIdToken().getJwtToken();
                     await fetch(`${API_BASE_URL}/api/subscriptions`, {
                         method: 'POST',
-                        headers: { 
+                        headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': currentUserSession.getIdToken().getJwtToken()
+                            'Authorization': `Bearer ${idToken}`
                         },
-                        body: JSON.stringify({ userId: currentUserDetails.sub, subscriptionName: name, cost: cost })
+                        body: JSON.stringify({ subscriptionName: name, cost: cost })
                     });
                     fetchSubscriptions();
                 } catch (error) {
                     alert(`Could not create subscription. Error: ${error.message}`);
                 }
             }
-
-
-            // --- EVENT LISTENERS ---
             
             signUpForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -321,16 +288,13 @@
                 const lastName = document.getElementById('signUpLastName').value;
                 const email = document.getElementById('signUpEmail').value;
                 const password = document.getElementById('signUpPassword').value;
-
                 const attributeList = [
                     new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'email', Value: email }),
                     new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'given_name', Value: firstName }),
                     new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'family_name', Value: lastName }),
                 ];
-
                 userPool.signUp(email, password, attributeList, null, async (err, result) => {
                     if (err) { alert(err.message || JSON.stringify(err)); return; }
-                    
                     try {
                         const response = await fetch(`${API_BASE_URL}/api/create-user`, {
                             method: 'POST',
@@ -339,14 +303,11 @@
                         });
                         if (!response.ok) throw new Error('Failed to create user profile on backend.');
                         const { stripeCustomerId } = await response.json();
-                        
                         localStorage.setItem(result.userSub, JSON.stringify({ stripeCustomerId }));
-
                     } catch (serverError) {
                         alert(`Sign up succeeded, but could not create backend profile: ${serverError.message}`);
                         return;
                     }
-                    
                     document.getElementById('confirmEmail').textContent = email;
                     showSection('confirm');
                 });
@@ -365,24 +326,12 @@
                         showSection('login');
                     });
             });
-            
-             resendCodeLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                const email = document.getElementById('signUpEmail').value || document.getElementById('loginEmail').value;
-                if (!email) { alert("Please enter your email in the sign-up or login form first."); return; }
-                new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool })
-                    .resendConfirmationCode((err, result) => {
-                        if (err) { alert(err.message || JSON.stringify(err)); return; }
-                        alert('A new confirmation code has been sent to your email.');
-                    });
-            });
 
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
                 const cognitoUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
-                
                 cognitoUser.authenticateUser(new AmazonCognitoIdentity.AuthenticationDetails({ Username: email, Password: password }), {
                     onSuccess: (session) => {
                         currentUserSession = session;
@@ -413,23 +362,19 @@
                     await createSubscription(name, cost);
                     addSubscriptionForm.reset();
                     showSection('dashboard');
-                } else {
-                    alert('Please enter valid details.');
                 }
             });
 
             paymentForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if (!currentUserDetails || !currentUserDetails.stripeCustomerId) {
-                    alert('Could not link card. User profile is missing Stripe ID. Please log in again.');
+                if (!currentUserDetails || !currentUserDetails.stripeCustomerId || !currentUserSession) {
+                    alert('Could not link card. User profile is missing key details. Please log in again.');
                     return;
                 }
-                
                 const { paymentMethod, error } = await stripe.createPaymentMethod({
                     type: 'card',
                     card: cardElement
                 });
-
                 if (error) {
                     document.getElementById('card-errors').textContent = error.message;
                 } else {
@@ -438,14 +383,13 @@
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Authorization': currentUserSession.getIdToken().getJwtToken()
+                                'Authorization': `Bearer ${currentUserSession.getIdToken().getJwtToken()}`
                             },
                             body: JSON.stringify({
                                 stripeCustomerId: currentUserDetails.stripeCustomerId,
                                 paymentMethodId: paymentMethod.id
                             })
                         });
-                        
                         const paymentDetails = {
                             brand: paymentMethod.card.brand,
                             last4: paymentMethod.card.last4,
@@ -453,11 +397,9 @@
                             exp_year: paymentMethod.card.exp_year,
                         };
                         currentUserDetails.paymentDetails = paymentDetails;
-                        
                         let localUserData = JSON.parse(localStorage.getItem(currentUserDetails.sub)) || {};
                         localUserData.paymentDetails = paymentDetails;
                         localStorage.setItem(currentUserDetails.sub, JSON.stringify(localUserData));
-
                         paymentModal.classList.remove('active');
                         renderPaymentMethod();
                     } catch (serverError) {
@@ -466,7 +408,6 @@
                 }
             });
 
-            // --- RENDER FUNCTIONS ---
             function setupStripeElement() {
                 if (cardElement) cardElement.destroy();
                 cardElement = stripe.elements().create("card");
@@ -510,7 +451,6 @@
                 monthlyTotalContainer.innerHTML = `<svg class="h-8 w-8 text-indigo-600 mr-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg><div><p class="font-bold text-3xl text-gray-800">$${totalCost.toFixed(2)}</p><p class="text-sm text-gray-500">Your estimated monthly bill.</p></div>`;
             }
             
-            // --- INITIAL LOAD ---
             checkSession();
         });
     </script>

@@ -3,3 +3,4 @@
 3. Double password on sign up 
 4. About and contact page
 5. Allow users to edit the subscriptions already added 
+6. Make sure that authMiddleware file is taking variables from .env folder and not hard coded into it
