@@ -1,30 +1,36 @@
 // authMiddleware.js
 // This file contains the middleware for verifying AWS Cognito JWTs.
+// This version corrects the "jwksUri is not defined" reference error.
 
 // --- Dependencies ---
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 
 // --- Cognito Configuration ---
-// IMPORTANT: You must replace these placeholder values with your actual
-// AWS Cognito User Pool details. You can find these in your .env file
-// or directly here for simplicity during setup.
-const COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || 'YOUR_USER_POOL_ID';
-const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+const COGNITO_USER_POOL_ID = "us-east-1_LdSNvXMNV";
+const AWS_REGION = "us-east-1";
 
-// Create a JWKS (JSON Web Key Set) client
-// This client will download the public keys from Cognito, which are used to
-// verify the signature of the JWTs.
+// ** FIX: Check if the required environment variables are set **
+if (!COGNITO_USER_POOL_ID || !AWS_REGION) {
+    throw new Error('Cognito User Pool ID and AWS Region must be set in the .env file');
+}
+
+// ** FIX: Define jwksUri BEFORE it is used. **
+const jwksUri = `https://cognito-idp.${AWS_REGION}.amazonaws.com/${COGNITO_USER_POOL_ID}/.well-known/jwks.json`;
+
+// Log the URI to help with debugging connection issues.
+console.log(`[Auth Middleware] JWKS URI configured to: ${jwksUri}`);
+
+// Create a JWKS (JSON Web Key Set) client **ONCE**.
 const client = jwksClient({
-  jwksUri: `https://cognito-idp.${AWS_REGION}.amazonaws.com/${COGNITO_USER_POOL_ID}/.well-known/jwks.json`
+  jwksUri: jwksUri
 });
 
-// This function is required by the 'jsonwebtoken' library.
-// It retrieves the correct signing key from the JWKS based on the key ID
-// found in the JWT header (kid).
+// This function retrieves the correct signing key from Cognito.
 function getKey(header, callback){
   client.getSigningKey(header.kid, function(err, key) {
     if (err) {
+        console.error("Error getting signing key:", err);
         callback(err);
         return;
     }
@@ -35,13 +41,11 @@ function getKey(header, callback){
 
 // --- The Middleware Function ---
 const authorizationMiddleware = (req, res, next) => {
-  // Check if the Authorization header exists and is in the correct format
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Access Denied: No token provided or malformed header.' });
   }
 
-  // Extract the token from the "Bearer <token>" string
   const token = authHeader.split(' ')[1];
 
   // Verify the token using the public key from Cognito
@@ -51,16 +55,13 @@ const authorizationMiddleware = (req, res, next) => {
       return res.status(401).json({ message: 'Access Denied: Invalid or expired token.' });
     }
 
-    // If the token is valid, the 'decoded' payload is attached to the request object.
-    // This makes the user's information (like their unique Cognito ID, 'sub')
-    // available to the main route logic.
+    // Attach the decoded user information to the request object
     req.user = decoded;
     
-    // Pass control to the next middleware or the main route handler
+    // Proceed to the next function in the chain
     next();
   });
 };
 
-// Export the middleware so it can be used in server.js
 module.exports = authorizationMiddleware;
 
