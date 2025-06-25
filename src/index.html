@@ -226,7 +226,7 @@
                 }
             }
             
-            function showDashboard(cognitoUser) {
+            async function showDashboard(cognitoUser) {
                 cognitoUser.getUserAttributes(async (err, attributes) => {
                     if (err) { alert(err.message || JSON.stringify(err)); return; }
                     
@@ -236,9 +236,7 @@
                     document.getElementById('dashboardWelcome').textContent = `Welcome, ${currentUserDetails.given_name}!`;
                     document.getElementById('dashboardUserEmail').textContent = currentUserDetails.email;
                     
-                    // This demo continues to use localStorage to bridge the gap between Cognito
-                    // and our backend, which doesn't yet have a profile endpoint.
-                    await fetchUserProfileFromLocal(currentUserDetails.sub);
+                    await fetchUserProfile(currentUserDetails.sub);
 
                     renderPaymentMethod(); 
                     fetchSubscriptions();
@@ -246,11 +244,36 @@
                 });
             }
 
-            // --- ** FULL FUNCTIONALITY RESTORED ** ---
-
             // --- API Communication & Data Functions ---
-            async function fetchUserProfileFromLocal(userId) {
-                const localUserData = JSON.parse(localStorage.getItem(userId)) || {};
+            async function fetchUserProfile(userId) {
+                let localUserData = JSON.parse(localStorage.getItem(userId)) || {};
+
+                // ** NEW: Self-healing logic **
+                if (!localUserData.stripeCustomerId) {
+                    console.log("Stripe customer ID not found locally. Attempting to create on backend...");
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/api/create-user`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: currentUserDetails.sub,
+                                email: currentUserDetails.email,
+                                firstName: currentUserDetails.given_name,
+                                lastName: currentUserDetails.family_name
+                            })
+                        });
+                        if (!response.ok) throw new Error('Backend profile creation failed during login.');
+                        const { stripeCustomerId } = await response.json();
+                        localUserData.stripeCustomerId = stripeCustomerId;
+                        localStorage.setItem(userId, JSON.stringify(localUserData));
+                        console.log("Backend profile created and saved locally.");
+                    } catch (serverError) {
+                        alert(`A critical error occurred while setting up your user profile. Please try logging out and signing up again. Error: ${serverError.message}`);
+                        logoutUser(); // Log out on critical failure
+                        return;
+                    }
+                }
+                
                 currentUserDetails.stripeCustomerId = localUserData.stripeCustomerId;
                 currentUserDetails.paymentDetails = localUserData.paymentDetails;
             }
@@ -259,8 +282,6 @@
                 if (!currentUserDetails) return;
                 subscriptionsList.innerHTML = `<div class="loader"></div>`;
                 try {
-                    // NOTE: Your backend API Gateway needs to be secured with a Cognito authorizer
-                    // for the Authorization header to work.
                     const response = await fetch(`${API_BASE_URL}/api/subscriptions/${currentUserDetails.sub}`, {
                         headers: {
                             'Authorization': currentUserSession.getIdToken().getJwtToken()
