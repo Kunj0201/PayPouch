@@ -9,7 +9,7 @@ const cors = require('cors');
 // ** FIX: Load environment variables at the very top **
 require('dotenv').config();
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require('uuid');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 // ** NEW: Security-related dependencies **
@@ -34,10 +34,10 @@ app.use(cors());
 // ** NEW: Rate Limiting Middleware **
 // This will limit each IP address to 100 requests per 15 minutes.
 const limiter = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
-	max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
-	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+        standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+        legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 app.use(limiter); // Apply the rate limiting middleware to all requests
 
@@ -111,7 +111,7 @@ app.post(
     body('cost').isFloat({ gt: 0 }).withMessage('Cost must be a number greater than 0.'),
 
     async (req, res) => {
-	// ** NEW: Add a debug log to inspect the decoded token **
+        // ** NEW: Add a debug log to inspect the decoded token **
         console.log('[DEBUG] Decoded JWT User Object:', JSON.stringify(req.user, null, 2));
 
         // ** NEW: Check for validation errors **
@@ -201,8 +201,79 @@ app.get(
 );
 
 
+// ** NEW: PROTECTED: PUT /api/subscriptions/:subscriptionId (Update) **
+app.put(
+    '/api/subscriptions/:subscriptionId',
+    authorizationMiddleware,
+    param('subscriptionId').isString().notEmpty(),
+    body('subscriptionName').isString().notEmpty(),
+    body('cost').isFloat({ gt: 0 }),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        const userId = req.user.sub;
+        const { subscriptionId } = req.params;
+        const { subscriptionName, cost} = req.body;
+
+        const command = new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { userId, subscriptionId },
+            ConditionExpression: "attribute_exists(userId)",
+            UpdateExpression: "set subscriptionName = :name, cost = :cost",
+            ExpressionAttributeValues: {
+                ":name": subscriptionName,
+                ":cost": parseFloat(cost),
+            },
+            ReturnValues: "ALL_NEW",
+        });
+
+        try {
+            const { Attributes } = await docClient.send(command);
+            res.status(200).json(Attributes);
+        } catch (error) {
+            if (error.name === 'ConditionalCheckFailedException') {
+                return res.status(404).json({ message: 'Subscription not found or you do not have permission to edit it.' });
+            }
+            console.error("DynamoDB Update Error:", error);
+            res.status(500).json({ message: 'Failed to update subscription' });
+        }
+    }
+);
+
+// ** NEW: PROTECTED: DELETE /api/subscriptions/:subscriptionId (Delete) **
+app.delete(
+    '/api/subscriptions/:subscriptionId',
+    authorizationMiddleware,
+    param('subscriptionId').isString().notEmpty(),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        const userId = req.user.sub;
+        const { subscriptionId } = req.params;
+
+        const command = new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { userId, subscriptionId },
+            ConditionExpression: "attribute_exists(userId)",
+        });
+
+        try {
+            await docClient.send(command);
+            res.status(200).json({ message: 'Subscription deleted successfully' });
+        } catch (error) {
+            if (error.name === 'ConditionalCheckFailedException') {
+                return res.status(404).json({ message: 'Subscription not found or you do not have permission to delete it.' });
+            }
+            console.error("DynamoDB Delete Error:", error);
+            res.status(500).json({ message: 'Failed to delete subscription' });
+        }
+    }
+);
+
+
 // --- Server Activation ---
 app.listen(PORT, () => {
     console.log(`PayPouch server is running on http://localhost:${PORT}`);
 });
-
