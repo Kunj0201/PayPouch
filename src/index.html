@@ -452,6 +452,13 @@
                 }
             });
 
+            cancelEditSubscriptionBtn.addEventListener('click', () => {
+                editSubscriptionForm.reset();
+                editSubscriptionForm.removeAttribute('data-edit-id');
+                showSection('dashboard'); // or hide the form, depending on your UI
+                console.log('Edit cancelled and form reset');
+            });
+
             paymentForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!currentUserDetails || !currentUserDetails.stripeCustomerId || !currentUserSession) {
