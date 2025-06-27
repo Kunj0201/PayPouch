@@ -9,7 +9,7 @@ const cors = require('cors');
 // ** FIX: Load environment variables at the very top **
 require('dotenv').config();
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require('uuid');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 // ** NEW: Security-related dependencies **
@@ -196,6 +196,78 @@ app.get(
         } catch (error) {
             console.error("DynamoDB error:", error);
             res.status(500).json({ message: 'Failed to retrieve subscriptions.', error: error.message });
+        }
+    }
+);
+
+
+// ** NEW: PROTECTED: PUT /api/subscriptions/:subscriptionId (Update) **
+app.put(
+    '/api/subscriptions/:subscriptionId',
+    authorizationMiddleware,
+    param('subscriptionId').isString().notEmpty(),
+    body('subscriptionName').isString().notEmpty(),
+    body('cost').isFloat({ gt: 0 }),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        const userId = req.user.sub;
+        const { subscriptionId } = req.params;
+        const { subscriptionName, cost} = req.body;
+
+        const command = new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { userId, subscriptionId },
+            ConditionExpression: "attribute_exists(userId)",
+            UpdateExpression: "set subscriptionName = :name, cost = :cost",
+            ExpressionAttributeValues: {
+                ":name": subscriptionName,
+                ":cost": parseFloat(cost),
+            },
+            ReturnValues: "ALL_NEW",
+        });
+
+        try {
+            const { Attributes } = await docClient.send(command);
+            res.status(200).json(Attributes);
+        } catch (error) {
+            if (error.name === 'ConditionalCheckFailedException') {
+                return res.status(404).json({ message: 'Subscription not found or you do not have permission to edit it.' });
+            }
+            console.error("DynamoDB Update Error:", error);
+            res.status(500).json({ message: 'Failed to update subscription' });
+        }
+    }
+);
+
+// ** NEW: PROTECTED: DELETE /api/subscriptions/:subscriptionId (Delete) **
+app.delete(
+    '/api/subscriptions/:subscriptionId',
+    authorizationMiddleware,
+    param('subscriptionId').isString().notEmpty(),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        const userId = req.user.sub;
+        const { subscriptionId } = req.params;
+
+        const command = new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { userId, subscriptionId },
+            ConditionExpression: "attribute_exists(userId)",
+        });
+
+        try {
+            await docClient.send(command);
+            res.status(200).json({ message: 'Subscription deleted successfully' });
+        } catch (error) {
+            if (error.name === 'ConditionalCheckFailedException') {
+                return res.status(404).json({ message: 'Subscription not found or you do not have permission to delete it.' });
+            }
+            console.error("DynamoDB Delete Error:", error);
+            res.status(500).json({ message: 'Failed to delete subscription' });
         }
     }
 );
