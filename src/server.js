@@ -34,10 +34,10 @@ app.use(cors());
 // ** NEW: Rate Limiting Middleware **
 // This will limit each IP address to 100 requests per 15 minutes.
 const limiter = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
-	max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
-	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+        standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+        legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 app.use(limiter); // Apply the rate limiting middleware to all requests
 
@@ -111,7 +111,7 @@ app.post(
     body('cost').isFloat({ gt: 0 }).withMessage('Cost must be a number greater than 0.'),
 
     async (req, res) => {
-	// ** NEW: Add a debug log to inspect the decoded token **
+        // ** NEW: Add a debug log to inspect the decoded token **
         console.log('[DEBUG] Decoded JWT User Object:', JSON.stringify(req.user, null, 2));
 
         // ** NEW: Check for validation errors **
@@ -277,4 +277,3 @@ app.delete(
 app.listen(PORT, () => {
     console.log(`PayPouch server is running on http://localhost:${PORT}`);
 });
-
