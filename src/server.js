@@ -109,6 +109,7 @@ app.post(
     // ** NEW: Validation rules for the request body **
     body('subscriptionName').isString().isLength({ min: 1, max: 100 }).withMessage('Subscription name must be between 1 and 100 characters.'),
     body('cost').isFloat({ gt: 0 }).withMessage('Cost must be a number greater than 0.'),
+    body('renewalDate').optional().isISO8601().withMessage('Invalid date format for renewalDate. Use ISO 8601.'),
 
     async (req, res) => {
         // ** NEW: Add a debug log to inspect the decoded token **
@@ -128,7 +129,7 @@ app.post(
             return res.status(500).json({ message: 'Internal Server Error: User ID missing from token.' });
         }
 
-        const { subscriptionName, cost } = req.body;
+        const { subscriptionName, cost, renewalDate } = req.body;
         
         console.log(`User '${userId}' is creating a subscription for '${subscriptionName}'...`);
 
@@ -139,8 +140,11 @@ app.post(
             subscriptionId: subscriptionId,
             subscriptionName: subscriptionName,
             cost: parseFloat(cost), // Ensure cost is a number
-            createdAt: new Date().toISOString()
+            renewalDate: renewalDate,
+            createdAt: new Date().toISOString(),
         };
+
+        console.log(`User '${userId}' is creating a subscription for date '${renewalDate}'...`);
         
         const command = new PutCommand({
             TableName: TABLE_NAME,
@@ -208,22 +212,24 @@ app.put(
     param('subscriptionId').isString().notEmpty(),
     body('subscriptionName').isString().notEmpty(),
     body('cost').isFloat({ gt: 0 }),
+    body('renewalDate').optional().isISO8601().withMessage('Invalid date format for renewalDate. Use ISO 8601.'),
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
         const userId = req.user.sub;
         const { subscriptionId } = req.params;
-        const { subscriptionName, cost} = req.body;
+        const { subscriptionName, cost, renewalDate} = req.body;
 
         const command = new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { userId, subscriptionId },
             ConditionExpression: "attribute_exists(userId)",
-            UpdateExpression: "set subscriptionName = :name, cost = :cost",
+            UpdateExpression: "set subscriptionName = :name, cost = :cost, renewalDate = :renewalDate",
             ExpressionAttributeValues: {
                 ":name": subscriptionName,
                 ":cost": parseFloat(cost),
+                ":renewalDate": renewalDate,
             },
             ReturnValues: "ALL_NEW",
         });
