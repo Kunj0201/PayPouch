@@ -274,10 +274,54 @@
                 });
             }
 
-            async function fetchUserProfile(userId) {
-                const localUserData = JSON.parse(localStorage.getItem(userId)) || {};
-                currentUserDetails.stripeCustomerId = localUserData.stripeCustomerId;
-                currentUserDetails.paymentDetails = localUserData.paymentDetails;
+            async function fetchUserProfile() { // REMOVED the userId parameter
+                // This function now fetches the logged-in user's profile from your backend
+                if (!currentUserSession) {
+                    console.error("No session, cannot fetch user profile.");
+                    return;
+                }
+                
+                try {
+                    const idToken = currentUserSession.getIdToken().getJwtToken();
+                    const response = await fetch(`${API_BASE_URL}/api/user-profile`, {
+                        headers: {
+                            'Authorization': `Bearer ${idToken}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch user profile: ${response.statusText}`);
+                    }
+
+                    const profileData = await response.json();
+                    
+                    // Update the global user details object with the authoritative data from the backend
+                    currentUserDetails.stripeCustomerId = profileData.stripeCustomerId;
+
+                } catch (error) {
+                    console.error("Could not fetch user profile from backend:", error);
+                    // If the profile can't be fetched, the user can't make payments.
+                    // You might want to show an error message to the user here.
+                    alert("There was a problem loading your user profile. Please try logging in again.");
+                }
+            }
+
+            // In your showDashboard function, update the call:
+            function showDashboard(cognitoUser) {
+                cognitoUser.getUserAttributes(async (err, attributes) => {
+                    if (err) { alert(err.message || JSON.stringify(err)); return; }
+                    currentUserDetails = {};
+                    attributes.forEach(attr => currentUserDetails[attr.Name] = attr.Value);
+                    document.getElementById('dashboardWelcome').textContent = `Welcome, ${currentUserDetails.given_name}!`;
+                    document.getElementById('dashboardUserEmail').textContent = currentUserDetails.email;
+                    
+                    // This now fetches from your backend instead of localStorage
+                    await fetchUserProfile(); 
+                    
+                    renderPaymentMethod();
+                    fetchSubscriptions();
+                    showSection('dashboard');
+                });
             }
 
             async function fetchSubscriptions() {
