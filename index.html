@@ -595,7 +595,14 @@
                         const subElement = document.createElement('div');
                         subElement.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg border';
                         const dummyCard = `**** **** **** ${sub.subscriptionId.slice(-4)}`;
-                        const formattedDate = sub.renewalDate ? new Date(sub.renewalDate).toLocaleDateString() : 'Not set';
+                        const rawDate = sub.renewalDate ? sub.renewalDate.split('T')[0] : null;
+                        let formattedDate = 'Not set';
+
+                        if (rawDate) {
+                            const [year, month, day] = rawDate.split('-');
+                            formattedDate = `${month}/${day}/${year}`;
+                        }
+
                         console.log('Rendering subscription:', sub.subscriptionName, sub.cost, sub.renewalDate);
                         subElement.innerHTML = `
                             <div class="w-full p-4 bg-white rounded-xl shadow border flex justify-between items-center">
