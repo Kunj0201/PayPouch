@@ -595,6 +595,7 @@
                         const subElement = document.createElement('div');
                         subElement.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg border';
                         const dummyCard = `**** **** **** ${sub.subscriptionId.slice(-4)}`;
+                        console.log('Rendering subscription:', sub.subscriptionName, sub.cost, sub.renewalDate);
                         subElement.innerHTML = `
                             <div class="w-full p-4 bg-white rounded-xl shadow border flex justify-between items-center">
                                 <div class="flex items-center">
