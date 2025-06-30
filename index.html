@@ -34,6 +34,9 @@
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased">
 
+    <div id="errorMessageBox" class="hidden max-w-xl mx-auto mt-6 px-4 py-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm"></div>
+
+
     <!-- Header -->
     <header class="bg-white shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
@@ -270,7 +273,7 @@
 
             function showDashboard(cognitoUser) {
                 cognitoUser.getUserAttributes(async (err, attributes) => {
-                    if (err) { alert(err.message || JSON.stringify(err)); return; }
+                    if (err) { showError(err.message || JSON.stringify(err)); return; }
                     currentUserDetails = {};
                     attributes.forEach(attr => currentUserDetails[attr.Name] = attr.Value);
                     document.getElementById('dashboardWelcome').textContent = `Welcome, ${currentUserDetails.given_name}!`;
@@ -310,14 +313,14 @@
                     console.error("Could not fetch user profile from backend:", error);
                     // If the profile can't be fetched, the user can't make payments.
                     // You might want to show an error message to the user here.
-                    alert("There was a problem loading your user profile. Please try logging in again.");
+                    showError("There was a problem loading your user profile. Please try logging in again.");
                 }
             }
 
             // In your showDashboard function, update the call:
             function showDashboard(cognitoUser) {
                 cognitoUser.getUserAttributes(async (err, attributes) => {
-                    if (err) { alert(err.message || JSON.stringify(err)); return; }
+                    if (err) { showError(err.message || JSON.stringify(err)); return; }
                     currentUserDetails = {};
                     attributes.forEach(attr => currentUserDetails[attr.Name] = attr.Value);
                     document.getElementById('dashboardWelcome').textContent = `Welcome, ${currentUserDetails.given_name}!`;
@@ -365,7 +368,7 @@
                     });
                     fetchSubscriptions();
                 } catch (error) {
-                    alert(`Could not create subscription. Error: ${error.message}`);
+                    showError(`Could not create subscription. Error: ${error.message}`);
                 }
             }
 
@@ -381,7 +384,7 @@
                         body: JSON.stringify({ subscriptionName: name, cost: cost, renewalDate: renewalDate })
                     });
                 } catch (error) {
-                    alert(`Could not update subscription. Error: ${error.message}`);
+                    showError(`Could not update subscription. Error: ${error.message}`);
                 }
             }
 
@@ -395,7 +398,7 @@
                         }
                     });
                 } catch (error) {
-                    alert(`Could not delete subscription. Error: ${error.message}`);
+                    showError(`Could not delete subscription. Error: ${error.message}`);
                 }
             }
 
@@ -409,7 +412,7 @@
                 const confirmPassword = document.getElementById('signUpConfirmPassword').value;
 
                 if (password !== confirmPassword) {
-                    alert("Passwords do not match!");
+                    showError("Passwords do not match!");
                     return;
                 }
 
@@ -419,7 +422,7 @@
                     new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'family_name', Value: lastName }),
                 ];
                 userPool.signUp(email, password, attributeList, null, async (err, result) => {
-                    if (err) { alert(err.message || JSON.stringify(err)); return; }
+                    if (err) { showError(err.message || JSON.stringify(err)); return; }
                     try {
                         const response = await fetch(`${API_BASE_URL}/api/create-user`, {
                             method: 'POST',
@@ -430,7 +433,7 @@
                         const { stripeCustomerId } = await response.json();
                         localStorage.setItem(result.userSub, JSON.stringify({ stripeCustomerId }));
                     } catch (serverError) {
-                        alert(`Sign up succeeded, but could not create backend profile: ${serverError.message}`);
+                        showError(`Sign up succeeded, but could not create backend profile: ${serverError.message}`);
                         return;
                     }
                     document.getElementById('confirmEmail').textContent = email;
@@ -444,7 +447,7 @@
                 const code = document.getElementById('confirmationCode').value;
                 new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool })
                     .confirmRegistration(code, true, (err, result) => {
-                        if (err) { alert(err.message || JSON.stringify(err)); return; }
+                        if (err) { showError(err.message || JSON.stringify(err)); return; }
                         alert('Account confirmed! You can now log in.');
                         loginForm.reset();
                         document.getElementById('loginEmail').value = email;
@@ -462,7 +465,7 @@
                         currentUserSession = session;
                         showDashboard(cognitoUser);
                     },
-                    onFailure: (err) => alert(err.message || JSON.stringify(err)),
+                    onFailure: (err) => showError(err.message || JSON.stringify(err)),
                 });
             });
             
@@ -533,7 +536,7 @@
             paymentForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!currentUserDetails || !currentUserDetails.stripeCustomerId || !currentUserSession) {
-                    alert('Could not link card. User profile is missing key details. Please log in again.');
+                    showError('Could not link card. User profile is missing key details. Please log in again.');
                     return;
                 }
                 const { paymentMethod, error } = await stripe.createPaymentMethod({
@@ -568,7 +571,7 @@
                         paymentModal.classList.remove('active');
                         renderPaymentMethod();
                     } catch (serverError) {
-                        alert('Could not save payment method on server.');
+                        showError('Could not save payment method on server.');
                     }
                 }
             });
@@ -682,6 +685,18 @@
             
             checkSession();
         });
+
+        function showError(message, duration = 5000) {
+            const box = document.getElementById('errorMessageBox');
+            box.textContent = message;
+            box.classList.remove('hidden');
+
+            // Automatically hide after `duration` ms
+            setTimeout(() => {
+                box.classList.add('hidden');
+                box.textContent = '';
+            }, duration);
+        }
     </script>
 </body>
 </html>
