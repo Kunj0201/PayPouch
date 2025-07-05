@@ -271,6 +271,7 @@
                 }
             }
 
+            // In your showDashboard function, update the call:
             function showDashboard(cognitoUser) {
                 cognitoUser.getUserAttributes(async (err, attributes) => {
                     if (err) { showError(err.message || JSON.stringify(err)); return; }
@@ -278,8 +279,11 @@
                     attributes.forEach(attr => currentUserDetails[attr.Name] = attr.Value);
                     document.getElementById('dashboardWelcome').textContent = `Welcome, ${currentUserDetails.given_name}!`;
                     document.getElementById('dashboardUserEmail').textContent = currentUserDetails.email;
-                    await fetchUserProfile(currentUserDetails.sub);
-                    renderPaymentMethod();
+                    
+                    // This now fetches from your backend instead of localStorage
+                    await fetchUserProfile(); 
+                    
+                    await fetchPaymentMethod();
                     fetchSubscriptions();
                     showSection('dashboard');
                 });
@@ -315,24 +319,6 @@
                     // You might want to show an error message to the user here.
                     showError("There was a problem loading your user profile. Please try logging in again.");
                 }
-            }
-
-            // In your showDashboard function, update the call:
-            function showDashboard(cognitoUser) {
-                cognitoUser.getUserAttributes(async (err, attributes) => {
-                    if (err) { showError(err.message || JSON.stringify(err)); return; }
-                    currentUserDetails = {};
-                    attributes.forEach(attr => currentUserDetails[attr.Name] = attr.Value);
-                    document.getElementById('dashboardWelcome').textContent = `Welcome, ${currentUserDetails.given_name}!`;
-                    document.getElementById('dashboardUserEmail').textContent = currentUserDetails.email;
-                    
-                    // This now fetches from your backend instead of localStorage
-                    await fetchUserProfile(); 
-                    
-                    renderPaymentMethod();
-                    fetchSubscriptions();
-                    showSection('dashboard');
-                });
             }
 
             async function fetchSubscriptions() {
@@ -564,30 +550,23 @@
                             exp_month: paymentMethod.card.exp_month,
                             exp_year: paymentMethod.card.exp_year,
                         };
-                        currentUserDetails.paymentDetails = paymentDetails;
-                        let localUserData = JSON.parse(localStorage.getItem(currentUserDetails.sub)) || {};
-                        localUserData.paymentDetails = paymentDetails;
-                        localStorage.setItem(currentUserDetails.sub, JSON.stringify(localUserData));
+                        if (!response.ok) {
+                            throw new Error('Failed to save payment method on server.');
+                        }
+
+                        // Instead of manually setting, fetch the authoritative data again
+                        await fetchPaymentMethod();
                         paymentModal.classList.remove('active');
-                        renderPaymentMethod();
+
                     } catch (serverError) {
                         showError('Could not save payment method on server.');
                     }
                 }
             });
 
-            function setupStripeElement() {
-                if (cardElement) cardElement.destroy();
-                cardElement = stripe.elements().create("card");
-                cardElement.mount("#card-element");
-                cardElement.on('change', event => document.getElementById('card-errors').textContent = event.error ? event.error.message : '');
-            }
-
-            function renderPaymentMethod() {
-                if (!currentUserDetails) return;
-                const paymentDetails = currentUserDetails.paymentDetails;
+            function renderPaymentMethod(paymentDetails) { // Modified to accept paymentDetails
                 if (paymentDetails) {
-                    paymentMethodContainer.innerHTML = `<div class="flex items-center justify-between bg-gray-100 p-4 rounded-lg"><div class="flex items-center"><svg class="h-8 w-8 text-green-500 mr-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><div><p class="font-medium">${paymentDetails.brand.charAt(0).toUpperCase() + paymentDetails.brand.slice(1)} Card Linked</p><p class="text-sm text-gray-500">Ending in ${paymentDetails.last4} &bull; Expires ${paymentDetails.exp_month}/${paymentDetails.exp_year}</p></div></div><div class="flex space-x-2"><button id="editPaymentBtn" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300 text-xs">Edit</button></div></div>`;
+                    paymentMethodContainer.innerHTML = `<div class="flex items-center justify-between bg-gray-100 p-4 rounded-lg"><div class="flex items-center"><svg class="h-8 w-8 text-green-500 mr-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><div><p class="font-medium">${paymentDetails.brand.charAt(0).toUpperCase() + paymentDetails.brand.slice(1)} Card Linked</p><p class="text-sm text-gray-500">Ending in ${paymentDetails.last4} &bull; Expires ${String(paymentDetails.exp_month).padStart(2, '0')}/${paymentDetails.exp_year}</p></div></div><div class="flex space-x-2"><button id="editPaymentBtn" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300 text-xs">Edit</button></div></div>`;
                     document.getElementById('editPaymentBtn').addEventListener('click', () => {
                         paymentModal.classList.add('active');
                         setupStripeElement();
@@ -600,6 +579,48 @@
                     });
                 }
             }
+
+            function setupStripeElement() {
+                if (cardElement) cardElement.destroy();
+                cardElement = stripe.elements().create("card");
+                cardElement.mount("#card-element");
+                cardElement.on('change', event => document.getElementById('card-errors').textContent = event.error ? event.error.message : '');
+            }
+
+            async function fetchPaymentMethod() {
+                if (!currentUserDetails || !currentUserDetails.stripeCustomerId || !currentUserSession) {
+                    renderPaymentMethod(null); // Render with no payment method
+                    return;
+                }
+
+                try {
+                    const idToken = currentUserSession.getIdToken().getJwtToken();
+                    const response = await fetch(`${API_BASE_URL}/api/get-payment-method?stripeCustomerId=${currentUserDetails.stripeCustomerId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${idToken}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const { paymentMethod } = await response.json();
+                        currentUserDetails.paymentDetails = {
+                            brand: paymentMethod.card.brand,
+                            last4: paymentMethod.card.last4,
+                            exp_month: paymentMethod.card.exp_month,
+                            exp_year: paymentMethod.card.exp_year,
+                        };
+                        renderPaymentMethod(currentUserDetails.paymentDetails);
+                    } else {
+                        currentUserDetails.paymentDetails = null;
+                        renderPaymentMethod(null);
+                    }
+                } catch (error) {
+                    console.error("Could not fetch payment method from backend:", error);
+                    showError("There was a problem loading your payment information.");
+                    renderPaymentMethod(null);
+                }
+            }
+
 
             function renderSubscriptions(subs) {
                 let totalCost = 0;
