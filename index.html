@@ -73,7 +73,12 @@
     <header class="bg-white shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-3xl font-bold text-gray-900"><span class="text-indigo-600">Pay</span>Pouch</h1>
-            <button id="logoutBtn" class="hidden bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600">Logout</button>
+            <div id="loggedInNav" class="hidden items-center">
+                <a href="#" id="showHomeLink" class="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Home</a>
+                <a href="#" id="showAboutLink" class="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">About</a>
+                <a href="#" id="showContactLink" class="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Contact</a>
+                <button id="logoutBtn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 ml-4">Logout</button>
+            </div>
         </div>
     </header>
 
@@ -222,6 +227,33 @@
                 </form>
             </div>
         </section>
+
+        <section id="aboutSection" class="section">
+            <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
+                <h2 class="text-2xl md:text-3xl font-bold mb-6 text-center">About PayPouch</h2>
+                <p class="text-gray-600 mb-4">
+                    Welcome to PayPouch, your simple and secure solution for managing online subscriptions. In an age where we subscribe to everything from streaming services to software, keeping track of monthly payments can be a challenge. PayPouch simplifies this by consolidating all your subscriptions into one place.
+                </p>
+                <p class="text-gray-600 mb-4">
+                    With PayPouch, you can create unique virtual cards for each subscription. This means you never have to expose your real card details online, significantly enhancing your security. Set spending limits and renewal dates for each virtual card, putting you in complete control of your finances.
+                </p>
+                <p class="text-gray-600">
+                    Our platform provides a clear dashboard where you can see all your active subscriptions, their costs, and upcoming renewal dates at a glance. Say goodbye to unexpected charges and the hassle of updating card information across multiple websites. Welcome to smarter, safer subscription management.
+                </p>
+            </div>
+        </section>
+
+        <section id="contactSection" class="section">
+            <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-lg">
+                <h2 class="text-2xl md:text-3xl font-bold mb-6 text-center">Contact Us & Feedback</h2>
+                <form id="contactForm" class="space-y-4">
+                    <input type="email" id="contactEmail" placeholder="Your Email Address" class="w-full px-4 py-3 border rounded-lg" required>
+                    <textarea id="contactMessage" placeholder="Your message or feedback" rows="5" class="w-full px-4 py-3 border rounded-lg" required></textarea>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg">Send Message</button>
+                </form>
+            </div>
+        </section>
+
     </main>
     
     <div id="paymentModal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 items-center justify-center">
@@ -286,13 +318,21 @@
                 dashboard: document.getElementById('dashboardSection'),
                 addSubscription: document.getElementById('addSubscriptionSection'),
                 editSubscription: document.getElementById('editSubscriptionSection'),
+                about: document.getElementById('aboutSection'),
+                contact: document.getElementById('contactSection'),
             };
+            const loggedInNav = document.getElementById('loggedInNav');
             const signUpForm = document.getElementById('signUpForm');
             const confirmForm = document.getElementById('confirmForm');
             const loginForm = document.getElementById('loginForm');
             const logoutBtn = document.getElementById('logoutBtn');
             const showLoginLink = document.getElementById('showLoginLink');
             const showSignUpLink = document.getElementById('showSignUpLink');
+            //For about and contact links
+            const showHomeLink = document.getElementById('showHomeLink');
+            const showAboutLink = document.getElementById('showAboutLink');
+            const showContactLink = document.getElementById('showContactLink');
+
             const resendCodeLink = document.getElementById('resendCodeLink');
             const paymentModal = document.getElementById('paymentModal');
             const paymentForm = document.getElementById('paymentForm');
@@ -304,7 +344,7 @@
 
             const editSubscriptionForm = document.getElementById('editSubscriptionForm');
             const cancelEditSubscriptionBtn = document.getElementById('cancelEditSubscriptionBtn');
-
+            const contactForm = document.getElementById('contactForm');
 
             const paymentMethodContainer = document.getElementById('paymentMethodContainer');
             const subscriptionsList = document.getElementById('subscriptionsList');
@@ -324,7 +364,15 @@
                 Object.values(sections).forEach(s => s.style.display = 'none');
                 if (sections[sectionName]) sections[sectionName].style.display = 'block';
                 paymentModal.classList.remove('active');
-                logoutBtn.style.display = (sectionName === 'dashboard') ? 'block' : 'none';
+
+                // Manage navigation visibility
+                const isLoggedIn = (sectionName === 'dashboard' || sectionName === 'about' || sectionName === 'contact');
+                if (isLoggedIn) {
+                    loggedInNav.style.display = 'flex';
+                } else {
+                    loggedInNav.style.display = 'none';
+                }
+                //logoutBtn.style.display = (sectionName === 'dashboard') ? 'block' : 'none';
             }
 
             function checkSession() {
@@ -601,7 +649,10 @@
                 currentUserDetails = null;
                 showSection('login');
             });
-
+            
+            showHomeLink.addEventListener('click', (e) => { e.preventDefault(); showSection('dashboard'); });
+            showAboutLink.addEventListener('click', (e) => { e.preventDefault(); showSection('about'); });
+            showContactLink.addEventListener('click', (e) => { e.preventDefault(); showSection('contact'); });
             showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showSection('login'); });
             showSignUpLink.addEventListener('click', (e) => { e.preventDefault(); showSection('signUp'); });
             addNewSubscriptionBtn.addEventListener('click', () => showSection('addSubscription'));
@@ -659,6 +710,30 @@
                 editSubscriptionForm.removeAttribute('data-edit-id');
                 showSection('dashboard'); // or hide the form, depending on your UI
                 console.log('Edit cancelled and form reset');
+            });
+
+            contactForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('contactEmail').value;
+                const message = document.getElementById('contactMessage').value;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/feedback`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, message })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Server returned an error.');
+                    }
+
+                    alert('Thank you for your feedback! We have received your message.');
+                    contactForm.reset();
+                    showSection('dashboard');
+                } catch (error) {
+                    showError('There was a problem sending your feedback. Please try again later.');
+                }
             });
 
             paymentForm.addEventListener('submit', async (e) => {
@@ -834,7 +909,8 @@
                                 console.log('Delete button clicked for subscription:', id);
                                 showConfirmationModal({
                                     title: 'Confirm Deletion',
-                                    message: 'Are you sure you want to delete this subscription?',
+                                    message: `Are you sure you want to delete this subscription? You are about to deactivate the virtual card for ${subId.name}. This will stop all future payments from PayPouch for this service.
+                                    Important: This will not cancel your account with ${subId.name}. To fully close your account and stop receiving communications from them, you must cancel your subscription directly on their website.`,
                                     confirmText: 'Delete',
                                     confirmClass: 'bg-red-600 hover:bg-red-700',
                                     onConfirm: async () => {
