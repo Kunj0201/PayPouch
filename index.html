@@ -909,8 +909,8 @@
                                 console.log('Delete button clicked for subscription:', id);
                                 showConfirmationModal({
                                     title: 'Confirm Deletion',
-                                    message: `Are you sure you want to delete this subscription? You are about to deactivate the virtual card for ${subId.name}. This will stop all future payments from PayPouch for this service.
-                                    Important: This will not cancel your account with ${subId.name}. To fully close your account and stop receiving communications from them, you must cancel your subscription directly on their website.`,
+                                    message: `Are you sure you want to delete this subscription? You are about to deactivate the virtual card for ${id.name}. This will stop all future payments from PayPouch for this service.
+                                    Important: This will not cancel your account with ${id.name}. To fully close your account and stop receiving communications from them, you must cancel your subscription directly on their website.`,
                                     confirmText: 'Delete',
                                     confirmClass: 'bg-red-600 hover:bg-red-700',
                                     onConfirm: async () => {
