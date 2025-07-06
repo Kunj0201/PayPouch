@@ -246,6 +246,7 @@ app.post(
             subscriptionId: subscriptionId,
             subscriptionName: subscriptionName,
             cost: parseFloat(cost), // Ensure cost is a number
+
 	    renewalDate: renewalDate,
             createdAt: new Date().toISOString(),
         };

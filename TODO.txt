@@ -1,6 +1,6 @@
-1. Give users to remove subscription 
-2. Allow users to enter enewal date of subscription 
+[x] 1. Give users to remove subscription     DONE
+2. Allow users to enter enewal date of subscription    DONE  
 3. Double password on sign up 
 4. About and contact page
-5. Allow users to edit the subscriptions already added 
+[x] 5. Allow users to edit the subscriptions already added   DONE
 6. Make sure that authMiddleware file is taking variables from .env folder and not hard coded into it
