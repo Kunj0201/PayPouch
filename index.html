@@ -368,6 +368,11 @@
             // --- Modal Logic ---
             let confirmCallback = null;
 
+            /**
+             * Manages the visibility of navigation links based on login state.
+             * @param {boolean} isLoggedIn - True if the user is logged in.
+             */
+
             // ** MODIFIED: Helper function to manage navigation state based on login status **
             function updateNavState(isLoggedIn) {
                 if (isLoggedIn) {
