@@ -427,36 +427,30 @@
                 if (cognitoUser != null) {
                     cognitoUser.getSession((err, session) => {
                         // `session` will be null or invalid if there's an error
-                        handleUserSession(session);
+                        handleUserSession(session, cognitoUser);
                     });
                 } else {
-                    handleUserSession(null); // No user, so no session.
+                    handleUserSession(null, null); // No user, so no session.
                 }
             }
 
-            function handleUserSession(session) {
-                // Log the session object to the developer console to see what we're receiving.
+            function handleUserSession(session, cognitoUser) {
                 console.log("handleUserSession called. Session object:", session);
-
                 currentUserSession = session;
-                
-                // **THE FIX**: We check for the existence of the session object directly.
-                // The `!!` converts the object (or null) into a true/false boolean value.
-                const isLoggedIn = !!session; 
-
+                const isLoggedIn = !!session;
                 console.log("Is user considered logged in?", isLoggedIn);
-
-                updateNavState(isLoggedIn); 
+                
+                updateNavState(isLoggedIn);
 
                 if (isLoggedIn) {
                     console.log("User is logged in. Showing dashboard.");
-                    const cognitoUser = userPool.getCurrentUser();
-                    showDashboard(cognitoUser);
+                    // We now use the cognitoUser object that was passed in,
+                    // instead of creating a new one.
+                    showDashboard(cognitoUser); 
                 } else {
                     console.log("User is not logged in. Showing login page.");
                     currentUserDetails = null;
                     showSection('login');
-
                 }
             }
 
@@ -705,9 +699,8 @@
                 const cognitoUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
                 cognitoUser.authenticateUser(new AmazonCognitoIdentity.AuthenticationDetails({ Username: email, Password: password }), {
                     onSuccess: (session) => {
-                        currentUserSession = session;
                         console.log('Login successful:', session);
-                        handleUserSession(session);
+                        handleUserSession(session, cognitoUser);
                     },
                     onFailure: (err) => showError(err.message || JSON.stringify(err)),
                 });
@@ -718,7 +711,7 @@
                 if (cognitoUser) {
                     cognitoUser.signOut();
                 }
-                handleUserSession(null); // Pass null to signify a logged-out state.
+                handleUserSession(null, null); // Pass null to signify a logged-out state.
             });
             
             
