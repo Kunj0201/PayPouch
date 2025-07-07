@@ -62,6 +62,12 @@
 
         /* Styles for the confirmation modal */
         #confirmationModal { z-index: 50; }
+
+        /* Style for active navigation links */
+        .nav-link.active {
+            color: #4f46e5; /* indigo-600 */
+            font-weight: 600; /* semibold */
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased">
@@ -73,12 +79,13 @@
     <header class="bg-white shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-3xl font-bold text-gray-900"><span class="text-indigo-600">Pay</span>Pouch</h1>
-            <div id="loggedInNav" class="hidden items-center">
-                <a href="#" id="showHomeLink" class="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Home</a>
-                <a href="#" id="showAboutLink" class="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">About</a>
-                <a href="#" id="showContactLink" class="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Contact</a>
-                <button id="logoutBtn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 ml-4">Logout</button>
-            </div>
+            <nav id="mainNav" class="flex items-center">
+                <a href="#" id="showHomeLink" class="nav-link hidden text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Home</a>
+                <a href="#" id="showAboutLink" class="nav-link text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">About</a>
+                <a href="#" id="showContactLink" class="nav-link hidden text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Contact</a>
+                <a href="#" id="navLoginLink" class="nav-link text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Log In</a>
+                <button id="logoutBtn" class="hidden bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 ml-4">Logout</button>
+            </nav>
         </div>
     </header>
 
@@ -321,7 +328,7 @@
                 about: document.getElementById('aboutSection'),
                 contact: document.getElementById('contactSection'),
             };
-            const loggedInNav = document.getElementById('loggedInNav');
+            
             const signUpForm = document.getElementById('signUpForm');
             const confirmForm = document.getElementById('confirmForm');
             const loginForm = document.getElementById('loginForm');
@@ -332,6 +339,7 @@
             const showHomeLink = document.getElementById('showHomeLink');
             const showAboutLink = document.getElementById('showAboutLink');
             const showContactLink = document.getElementById('showContactLink');
+            const navLoginLink = document.getElementById('navLoginLink');
 
             const resendCodeLink = document.getElementById('resendCodeLink');
             const paymentModal = document.getElementById('paymentModal');
@@ -360,19 +368,53 @@
             // --- Modal Logic ---
             let confirmCallback = null;
 
+            // ** MODIFIED: Helper function to manage navigation state based on login status **
+            function updateNavState(isLoggedIn) {
+                if (isLoggedIn) {
+                    // Show links for logged-in users
+                    showHomeLink.classList.remove('hidden');
+                    showContactLink.classList.remove('hidden');
+                    logoutBtn.classList.remove('hidden');
+
+                    // Hide links for logged-out users
+                    showAboutLink.classList.add('hidden');
+                    navLoginLink.classList.add('hidden');
+                } else {
+                    // Show links for logged-out users
+                    showAboutLink.classList.remove('hidden');
+                    navLoginLink.classList.remove('hidden');
+
+                    // Hide links for logged-in users
+                    showHomeLink.classList.add('hidden');
+                    showContactLink.classList.add('hidden');
+                    logoutBtn.classList.add('hidden');
+                }
+            }
+
             function showSection(sectionName) {
                 Object.values(sections).forEach(s => s.style.display = 'none');
-                if (sections[sectionName]) sections[sectionName].style.display = 'block';
+                if (sections[sectionName]) {
+                    sections[sectionName].style.display = 'block';
+                }
                 paymentModal.classList.remove('active');
 
-                // Manage navigation visibility
-                const isLoggedIn = (sectionName === 'dashboard' || sectionName === 'about' || sectionName === 'contact');
-                if (isLoggedIn) {
-                    loggedInNav.style.display = 'flex';
-                } else {
-                    loggedInNav.style.display = 'none';
+                document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+
+                const sectionToLinkMap = {
+                    'dashboard': 'showHomeLink',
+                    'about': 'showAboutLink',
+                    'contact': 'showContactLink',
+                    'login': 'navLoginLink',
+                    'signUp': 'navLoginLink',
+                    'confirm': 'navLoginLink'
+                };
+                const activeLinkId = sectionToLinkMap[sectionName];
+                if (activeLinkId) {
+                    const activeLink = document.getElementById(activeLinkId);
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                    }
                 }
-                //logoutBtn.style.display = (sectionName === 'dashboard') ? 'block' : 'none';
             }
 
             function checkSession() {
@@ -380,13 +422,16 @@
                 if (cognitoUser != null) {
                     cognitoUser.getSession((err, session) => {
                         if (err || !session.isValid()) {
-                            showSection('login');
+                            updateNavState(false);
+                            showSection('signUp');
                             return;
                         }
                         currentUserSession = session;
+                        updateNavState(true);
                         showDashboard(cognitoUser);
                     });
                 } else {
+                    updateNavState(false);
                     showSection('signUp');
                 }
             }
@@ -650,11 +695,14 @@
                 showSection('login');
             });
             
+            
             showHomeLink.addEventListener('click', (e) => { e.preventDefault(); showSection('dashboard'); });
             showAboutLink.addEventListener('click', (e) => { e.preventDefault(); showSection('about'); });
             showContactLink.addEventListener('click', (e) => { e.preventDefault(); showSection('contact'); });
+            navLoginLink.addEventListener('click', (e) => { e.preventDefault(); showSection('login'); });
             showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showSection('login'); });
             showSignUpLink.addEventListener('click', (e) => { e.preventDefault(); showSection('signUp'); });
+            
             addNewSubscriptionBtn.addEventListener('click', () => showSection('addSubscription'));
             cancelAddSubscriptionBtn.addEventListener('click', () => { addSubscriptionForm.reset(); showSection('dashboard'); });
             cancelPaymentBtn.addEventListener('click', () => { paymentModal.classList.remove('active'); if (cardElement) cardElement.destroy(); });
@@ -730,7 +778,11 @@
 
                     alert('Thank you for your feedback! We have received your message.');
                     contactForm.reset();
-                    showSection('dashboard');
+                    if (currentUserSession && currentUserSession.isValid()) {
+                        showSection('dashboard');
+                    } else {
+                        showSection('login');
+                    }
                 } catch (error) {
                     showError('There was a problem sending your feedback. Please try again later.');
                 }
@@ -867,7 +919,7 @@
                                     <span class="font-bold text-indigo-600">${sub.subscriptionName.charAt(0).toUpperCase()}</span>
                                 </div>
                                 <div>
-                                    <p class="font-semibold">${sub.subscriptionName}</p>
+                                    <p class="font-semibold">${sub.subscriptionName.charAt(0).toUpperCase()}</p>
                                     <p class="text-sm text-gray-500">Renewal Date: ${formattedDate}</p>
                                 </div>
                                 </div>
@@ -912,8 +964,8 @@
                                 showConfirmationModal({
                                     title: 'Confirm Deletion',
                                     message: `Are you sure you want to delete this subscription?
-                                        <br><br>You are about to deactivate the virtual card for ${name}. This will stop all future payments from PayPouch for this service.
-                                        <br><br><strong>Important:</strong> This will <strong>NOT CANCEL</strong> your account with ${name}. To fully close your account and stop receiving communications from them, you must cancel your subscription directly on their website.`,
+                                        <br><br>You are about to deactivate the virtual card for <strong>${name}</strong>.This will stop all future payments from PayPouch for this service.
+                                        <br><br><strong>Important:</strong> This will <strong>NOT CANCEL</strong> your account with <strong>${name}</strong>. To fully close your account and stop receiving communications from them, you must cancel your subscription directly on their website.`,
                                     confirmText: 'Delete',
                                     confirmClass: 'bg-red-600 hover:bg-red-700',
                                     onConfirm: async () => {
