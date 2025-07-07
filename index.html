@@ -426,18 +426,27 @@
                 const cognitoUser = userPool.getCurrentUser();
                 if (cognitoUser != null) {
                     cognitoUser.getSession((err, session) => {
-                        if (err || !session.isValid()) {
-                            updateNavState(false);
-                            showSection('signUp');
-                            return;
-                        }
-                        currentUserSession = session;
-                        updateNavState(true);
-                        showDashboard(cognitoUser);
+                        // `session` will be null or invalid if there's an error
+                        handleUserSession(session);
                     });
                 } else {
-                    updateNavState(false);
-                    showSection('signUp');
+                    handleUserSession(null); // No user, so no session.
+                }
+            }
+
+            function handleUserSession(session) {
+                currentUserSession = session;
+                // A user is logged in if the session exists and is valid.
+                const isLoggedIn = (session && session.isValid()); 
+
+                updateNavState(isLoggedIn); // This updates the top navigation bar.
+
+                if (isLoggedIn) {
+                    const cognitoUser = userPool.getCurrentUser();
+                    showDashboard(cognitoUser); // If logged in, show the dashboard.
+                } else {
+                    currentUserDetails = null;
+                    showSection('login'); // If not logged in, show the login screen.
                 }
             }
 
@@ -686,18 +695,18 @@
                 const cognitoUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
                 cognitoUser.authenticateUser(new AmazonCognitoIdentity.AuthenticationDetails({ Username: email, Password: password }), {
                     onSuccess: (session) => {
-                        currentUserSession = session;
-                        showDashboard(cognitoUser);
+                        handleUserSession(session);
                     },
                     onFailure: (err) => showError(err.message || JSON.stringify(err)),
                 });
             });
             
             logoutBtn.addEventListener('click', () => {
-                userPool.getCurrentUser()?.signOut();
-                currentUserSession = null;
-                currentUserDetails = null;
-                showSection('login');
+                const cognitoUser = userPool.getCurrentUser();
+                if (cognitoUser) {
+                    cognitoUser.signOut();
+                }
+                handleUserSession(null); // Pass null to signify a logged-out state.
             });
             
             
