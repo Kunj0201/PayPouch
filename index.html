@@ -847,7 +847,7 @@
                         paymentModal.classList.remove('active');
 
                     } catch (serverError) {
-                        showError('Could not save payment method on server.');
+                        showError('Could not save payment method on server. ' + serverError.message);
                     }
                 }
             });
