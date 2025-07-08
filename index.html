@@ -821,7 +821,7 @@
                     document.getElementById('card-errors').textContent = error.message;
                 } else {
                     try {
-                        await fetch(`${API_BASE_URL}/api/save-payment-method`, {
+                        const response = await fetch(`${API_BASE_URL}/api/save-payment-method`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -839,7 +839,8 @@
                             exp_year: paymentMethod.card.exp_year,
                         };
                         if (!response.ok) {
-                            throw new Error('Failed to save payment method on server.');
+                            const errorData = await response.json().catch(() => ({})); // Gracefully handle non-JSON responses
+                            throw new Error(errorData.message || 'Failed to save payment method on server.');
                         }
 
                         // Instead of manually setting, fetch the authoritative data again
