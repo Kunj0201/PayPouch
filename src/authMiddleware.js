@@ -5,10 +5,11 @@
 // --- Dependencies ---
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
+require('dotenv').config();
 
 // --- Cognito Configuration ---
-const COGNITO_USER_POOL_ID = "us-east-1_LdSNvXMNV";
-const AWS_REGION = "us-east-1";
+const COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID;
+const AWS_REGION = process.env.AWS_REGION;
 
 // ** FIX: Check if the required environment variables are set **
 if (!COGNITO_USER_POOL_ID || !AWS_REGION) {
