@@ -6,6 +6,10 @@
 // --- Dependencies ---
 const express = require('express');
 const cors = require('cors');
+
+const path = require('path');
+const nodemailer = require('nodemailer'); // Import Nodemailer
+
 // ** FIX: Load environment variables at the very top **
 require('dotenv').config();
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
@@ -20,7 +24,7 @@ const authorizationMiddleware = require('./authMiddleware');
 
 // --- Initialization ---
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 80;
 const TABLE_NAME = 'paypouch-subscriptions';
 
 // --- AWS SDK Configuration ---
@@ -28,8 +32,35 @@ const dynamoDBClient = new DynamoDBClient({ region: "us-east-1" });
 const docClient = DynamoDBDocumentClient.from(dynamoDBClient);
 
 // --- Middleware ---
+
+
+// ** CORRECTED: Create a robust CORS options object allowing multiple origins **
+const allowedOrigins = ['https://paypouch.org', 'https://www.paypouch.org'];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: "Content-Type,Authorization"
+};
+
+// Enable CORS with your specific options.
+app.use(cors(corsOptions));
+
+// The rest of your middleware
 app.use(express.json());
-app.use(cors());
+
+// ADD THIS HEALTH CHECK ENDPOINT
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: "ok", message: "PayPouch server is running." });
+});
 
 // ** NEW: Rate Limiting Middleware **
 // This will limit each IP address to 100 requests per 15 minutes.
@@ -41,6 +72,24 @@ const limiter = rateLimit({
 });
 app.use(limiter); // Apply the rate limiting middleware to all requests
 
+// --- Nodemailer Transporter Setup ---
+const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+});
+
+transporter.verify(function(error, success) {
+    if (error) {
+        console.log('Error with email transporter configuration:', error);
+    } else {
+        console.log('Email transporter is configured and ready to send emails.');
+    }
+});
 
 // UNPROTECTED ROUTE: For creating a new user and Stripe Customer.
 app.post('/api/create-user',
@@ -64,6 +113,69 @@ app.post('/api/create-user',
         } catch (error) {
             console.error("Stripe error creating customer:", error);
             res.status(500).json({ message: 'Failed to create Stripe customer.' });
+        }
+    }
+);
+
+// PROTECTED ROUTE: For retrieving a customer's payment method from Stripe.
+app.get('/api/get-payment-method',
+    authorizationMiddleware,
+    async (req, res) => {
+        const { stripeCustomerId } = req.query;
+        if (!stripeCustomerId) {
+            return res.status(400).json({ message: 'Stripe customer ID is required.' });
+        }
+
+        try {
+            const customer = await stripe.customers.retrieve(stripeCustomerId, {
+                expand: ['invoice_settings.default_payment_method']
+            });
+
+            if (customer.invoice_settings.default_payment_method) {
+                res.status(200).json({ paymentMethod: customer.invoice_settings.default_payment_method });
+            } else {
+                res.status(404).json({ message: 'No default payment method found.' });
+            }
+        } catch (error) {
+            console.error("Stripe error retrieving payment method:", error);
+            res.status(500).json({ message: 'Failed to retrieve payment method from Stripe.' });
+        }
+    }
+);
+
+app.get(
+    '/api/user-profile',
+    authorizationMiddleware, // Ensures the user is logged in
+    async (req, res) => {
+        const userId = req.user.sub; // Get userId securely from the decoded token
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID not found in token.' });
+        }
+
+        try {
+            // In a complete application, you would fetch this from a user profile table
+            // in DynamoDB that links your Cognito User ID to the Stripe Customer ID.
+            // For now, we will retrieve it directly from Stripe's API.
+            const customers = await stripe.customers.list({
+                email: req.user.email,
+                limit: 1
+            });
+
+            if (customers.data.length === 0) {
+                return res.status(404).json({ message: 'Stripe customer not found.' });
+            }
+
+            const customer = customers.data[0];
+            res.status(200).json({
+                userId: userId,
+                stripeCustomerId: customer.id
+                // Add any other user details you might store
+            });
+
+        } catch (error) {
+            console.error("Error fetching user profile:", error);
+            res.status(500).json({ message: 'Failed to retrieve user profile.' });
         }
     }
 );
@@ -140,6 +252,7 @@ app.post(
             subscriptionId: subscriptionId,
             subscriptionName: subscriptionName,
             cost: parseFloat(cost), // Ensure cost is a number
+
             renewalDate: renewalDate,
             createdAt: new Date().toISOString(),
         };
@@ -274,6 +387,44 @@ app.delete(
             }
             console.error("DynamoDB Delete Error:", error);
             res.status(500).json({ message: 'Failed to delete subscription' });
+        }
+    }
+);
+
+// --- UNPROTECTED ROUTE: For submitting feedback ---
+app.post('/api/feedback',
+    body('email').isEmail().withMessage('A valid email is required.'),
+    body('message').isString().notEmpty().withMessage('Message cannot be empty.'),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { email, message } = req.body;
+
+        const mailOptions = {
+            from: `"PayPouch Feedback" <${process.env.EMAIL_USER}>`,
+            to: process.env.EMAIL_USER, // Sends the email to yourself
+            subject: 'New Feedback from PayPouch User',
+            html: `
+                <p>You have received new feedback.</p>
+                <h3>Contact Details</h3>
+                <ul>
+                    <li><strong>Email:</strong> ${email}</li>
+                </ul>
+                <h3>Message</h3>
+                <p>${message}</p>
+            `
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log('Feedback email sent successfully.');
+            res.status(200).json({ message: 'Feedback received and email sent.' });
+        } catch (error) {
+            console.error('Failed to send feedback email:', error);
+            res.status(500).json({ message: 'There was an error sending the feedback email.' });
         }
     }
 );
