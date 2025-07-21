@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/usr/src/app/.npm \
 
 USER node
 
-COPY --chown=nopde:node ./src .
+COPY . .
 
 EXPOSE 80
 
