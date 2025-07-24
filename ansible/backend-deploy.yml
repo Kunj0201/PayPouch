@@ -1,3 +1,49 @@
+---
 - name: Deploy backend
   hosts: all
-  become: true
+  become: yes
+  vars:
+    image_name:
+    container_name:
+    project_dir:
+
+    tasks:
+      - name: Ensure project directory exists
+        file:
+          path: "{{ project_dir }}"
+          state: directory
+          owner: ec2_user
+          group: ec2_user
+
+      - name: Copy Environment Variables
+        copy:
+          src: .env 
+          dest: "{{ project_dir }}/.env"
+          owner: ec2_user
+          mode: '0600'
+      
+      - name: Login into Github Container regisrty 
+        community.docker.docker_login:
+          registry_url: ghcr.io 
+          username: Kunj_2001
+          password: "{{ lookup('env', 'GH_PAT') }}"
+
+      - name: pull the latest image
+        community.docker.docker_image:
+          name: "{{ image_name }}"
+          source: pull
+
+      - name : Stop and remove the previous container 
+        community.docker.dcoker_container:
+          name: "{{ container_name }}"
+          state: absent
+
+      - name: Start the new Docker container
+        community.docker.dcoker_container:
+          name: "{{ container_name }}"
+          image: "{{ image_name }}"
+          state: started
+          restart_policy: always
+          env_file: "{{ project_dir }}/.env"
+          ports:
+            - "80:80"
